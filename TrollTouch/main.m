@@ -1,27 +1,39 @@
 #include <Foundation/Foundation.h>
 #include <unistd.h>
+#include <dlfcn.h>
 #include "IOKit_Private.h"
-#include "TouchSimulator.c" // Including C-impl directly for simplicity
+#include "TouchSimulator.c" 
 
-// --- Private SpringBoardServices ---
-// To open apps programmatically
-void* SBSLaunchApplicationWithIdentifier(CFStringRef identifier, Boolean suspended);
-
-// TikTok Bundle IDs
+// --- Configuration ---
 #define TIKTOK_GLOBAL @"com.zhiliaoapp.musically"
 #define TIKTOK_CHINA  @"com.ss.iphone.ugc.Aweme"
 
-// Configuration
-#define SWIPE_DURATION 200000 // Microseconds for swipe steps
-#define WATCH_DURATION 5 // Seconds to watch video
+// --- Dynamic Linking for Private API ---
+typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
 void launchTikTok() {
-    printf("[*] Launching TikTok...\n");
+    printf("[*] Launching TikTok via dlopen...\n");
+    
+    // Dynamically load SpringBoardServices
+    void* handle = dlopen("/System/Library/PrivateFrameworks/SpringBoardServices.framework/SpringBoardServices", RTLD_LAZY);
+    if (!handle) {
+        printf("[-] Failed to open SpringBoardServices: %s\n", dlerror());
+        return;
+    }
+    
+    SBSLaunchAppFunc SBSLaunchApplicationWithIdentifier = (SBSLaunchAppFunc)dlsym(handle, "SBSLaunchApplicationWithIdentifier");
+    if (!SBSLaunchApplicationWithIdentifier) {
+        printf("[-] Failed to find symbol SBSLaunchApplicationWithIdentifier\n");
+        return;
+    }
+
     // Try Global first
     SBSLaunchApplicationWithIdentifier((__bridge CFStringRef)TIKTOK_GLOBAL, false);
     sleep(1);
     // Try Douyin just in case
     SBSLaunchApplicationWithIdentifier((__bridge CFStringRef)TIKTOK_CHINA, false);
+    
+    dlclose(handle);
 }
 
 void perform_swipe_up() {
