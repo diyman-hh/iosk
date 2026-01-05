@@ -80,16 +80,10 @@ void perform_touch(float x, float y) {
     printf("[TouchSimulator] Tapped at (%f, %f)\n", x, y);
 }
 
-// Simple Main helper to test logic if compiled as a standalone binary
-int main(int argc, char *argv[]) {
-    printf("Starting TrollTouch Simulator...\n");
-    init_touch_system();
-    
-    // Simulate a swipe (simplified as multiple taps for now)
-    // In reality, you'd send multiple 'Moved' events between Down and Up.
-    
-    // Example: Tap center (0.5, 0.5)
-    perform_touch(0.5, 0.5);
-    
-    return 0;
-}
+// Main helper removed to avoid conflict with main.m
+// int main(int argc, char *argv[]) {
+//     printf("Starting TrollTouch Simulator...\n");
+//     init_touch_system();
+//     perform_touch(0.5, 0.5);
+//     return 0;
+// }
