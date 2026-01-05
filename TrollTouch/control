@@ -1,0 +1,9 @@
+Package: com.diymanhh.trolltouch
+Name: TrollTouch
+Version: 1.0.0
+Architecture: iphoneos-arm
+Description: Native TikTok Automation Tool
+Maintainer: diymanhh
+Author: diymanhh
+Section: System
+Priority: optional
