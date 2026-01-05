@@ -1,0 +1,13 @@
+/.venv
+/check_proto.py
+/debug_read.py
+/generate_cert.py
+/inspect_device.py
+/inspect_signature.py
+/ipa
+/patch_global.py
+/patch_tidevice.py
+/poc_single.py
+/README.md
+/requirements.txt
+/serve_ipa.py
