@@ -34,6 +34,7 @@ jobs:
           mkdir -p Payload
           APP_PATH=$(find .theos -type d -name "TrollTouch.app" | head -n 1)
           cp -r "$APP_PATH" Payload/
+          cp TrollTouch/Info.plist Payload/TrollTouch.app/Info.plist
           zip -r TrollTouch.ipa Payload
 
       - name: Upload Artifact
