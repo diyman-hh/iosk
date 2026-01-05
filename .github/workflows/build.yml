@@ -32,7 +32,8 @@ jobs:
           make FINALPACKAGE=1
           # Manual IPA Packaging
           mkdir -p Payload
-          cp -r .theos/obj/debug/TrollTouch.app Payload/
+          APP_PATH=$(find .theos -type d -name "TrollTouch.app" | head -n 1)
+          cp -r "$APP_PATH" Payload/
           zip -r TrollTouch.ipa Payload
 
       - name: Upload Artifact
