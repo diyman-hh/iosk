@@ -6,7 +6,7 @@ import sys
 
 # Configuration
 PORT = 8000
-DIRECTORY = "ipa"
+DIRECTORY = "D:\\project\\iosk\\ipa"
 
 def get_local_ip():
     """Attempts to retrieve the local IP address connected to the network."""
