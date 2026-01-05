@@ -11,7 +11,7 @@ jobs:
     
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Theos
         run: |
@@ -24,7 +24,7 @@ jobs:
           make package FINALPACKAGE=1
           
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: TrollTouch_IPA
           path: TrollTouch/packages/*.ipa
