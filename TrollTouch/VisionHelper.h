@@ -15,3 +15,6 @@ BOOL isVideoFeed(UIImage *image);
 // Perform OCR on the full image or a region
 // Returns a string of all detected text
 void recognizeText(UIImage *image, void (^completion)(NSString *result));
+
+// Debug: Draw markers on image
+UIImage *drawDebugRects(UIImage *original);

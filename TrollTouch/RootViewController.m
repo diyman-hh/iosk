@@ -1,5 +1,7 @@
 #import "RootViewController.h"
 #import "AutomationManager.h"
+#import "ScreenCapture.h"
+#import "VisionHelper.h"
 
 @interface RootViewController () <UITextFieldDelegate>
 @property(nonatomic, strong) UITextField *startHourField;
@@ -76,6 +78,19 @@
                         action:@selector(toggleAutomation)
               forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:self.toggleButton];
+  y += 60;
+
+  UIButton *visButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  visButton.frame = CGRectMake(pad, y, w - 2 * pad, 50);
+  visButton.backgroundColor = [UIColor systemGreenColor];
+  [visButton setTitle:@"VISUALIZE POSITIONS (Save to Photos)"
+             forState:UIControlStateNormal];
+  [visButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+  visButton.layer.cornerRadius = 8;
+  [visButton addTarget:self
+                action:@selector(visualizePositions)
+      forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:visButton];
   y += 60;
 
   UILabel *logLabel =
@@ -169,6 +184,26 @@
   }
   self.logView.text = newText;
   [self.logView scrollRangeToVisible:NSMakeRange(self.logView.text.length, 1)];
+}
+
+- (void)visualizePositions {
+  [self appendLog:@"[*] visualization..."];
+  [self appendLog:@"[*] 3 seconds delay... Open TikTok now!"];
+
+  dispatch_after(
+      dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
+      dispatch_get_main_queue(), ^{
+        UIImage *screen = captureScreen();
+        if (!screen) {
+          [self appendLog:@"[-] Screenshot failed."];
+          return;
+        }
+
+        UIImage *debugImg = drawDebugRects(screen);
+        UIImageWriteToSavedPhotosAlbum(debugImg, nil, nil, nil);
+        [self appendLog:
+                  @"[+] Saved layout map to Camera Roll! Check Photos app."];
+      });
 }
 
 @end
