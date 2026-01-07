@@ -11,7 +11,6 @@
 #include <stdio.h>
 #include <unistd.h> // for usleep
 
-
 // Global client reference
 static IOHIDEventSystemClientRef ioSystemClient = NULL;
 
@@ -20,7 +19,7 @@ static IOHIDEventSystemClientRef ioSystemClient = NULL;
 // device board. Since we don't have the board ID, we use a common reliable
 // default or 0xDEFACED (mock).
 // iOS 15.8.5 compatible Sender ID (Virtual Service)
-#define K_SENDER_ID 0x0000000100000000
+#define K_SENDER_ID 0x0000000100000000ULL
 
 // Field defs if missing
 #ifndef kIOHIDEventFieldDigitizerIsTouch
@@ -32,10 +31,9 @@ void init_touch_system() {
     // Passing NULL allocator is standard
     ioSystemClient = IOHIDEventSystemClientCreate(NULL);
     if (ioSystemClient) {
-      printf("[TouchSim] System client created. Ready to dispatch.\n");
+      printf("[TouchSim] System client created.\n");
     } else {
-      printf("[TouchSim] FATAL: Failed to create IOHIDEventSystemClient! Check "
-             "Entitlements.\n");
+      printf("[TouchSim] FATAL: Failed to create IOHIDEventSystemClient!\n");
     }
   }
 }
@@ -67,6 +65,9 @@ void send_digitizer_event(float x, float y, int type) {
       kCFAllocatorDefault, now, kIOHIDEventTypeDigitizer, 0, 1, eventMask, 0, x,
       y, 0, 0, 0, 0, 0, 0);
 
+  if (!event)
+    return;
+
   // Set standard fields manually for safety
   IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerTouch,
                             (type == 3) ? 0 : 1);
@@ -80,8 +81,6 @@ void send_digitizer_event(float x, float y, int type) {
   IOHIDEventSetSenderID(event, K_SENDER_ID);
   IOHIDEventSystemClientDispatchEvent(ioSystemClient, event);
   CFRelease(event);
-  printf("[TouchSim] Dispatched digitizer event (type: %d, x: %.2f, y: %.2f)\n",
-         type, x, y);
 }
 
 void perform_touch(float x, float y) {
@@ -92,11 +91,12 @@ void perform_touch(float x, float y) {
 }
 
 void perform_swipe(float x1, float y1, float x2, float y2, float duration_sec) {
-  printf("[TouchSim] Swiping (%.2f, %.2f) -> (%.2f, %.2f)\n", x1, y1, x2, y2);
+  printf("[TouchSim] Swipe Start (%.2f, %.2f) -> (%.2f, %.2f)\n", x1, y1, x2,
+         y2);
 
-  int steps = (int)(duration_sec * 120); // Increase to 120Hz for smoothness
-  if (steps < 20)
-    steps = 20;
+  int steps = (int)(duration_sec * 60); // Reduce to 60Hz for stability
+  if (steps < 10)
+    steps = 10;
 
   // 1. Down
   send_digitizer_event(x1, y1, 1);
@@ -116,6 +116,7 @@ void perform_swipe(float x1, float y1, float x2, float y2, float duration_sec) {
 
   // 3. Up
   send_digitizer_event(x2, y2, 3);
+  printf("[TouchSim] Swipe End\n");
 }
 
 // Main helper removed to avoid conflict with main.m
