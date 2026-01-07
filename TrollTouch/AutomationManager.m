@@ -82,7 +82,8 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   });
 }
 
-- (void)setupBackgroundAudio {
+- (void)setupBackgrounds {
+  // 1. Audio (Existing)
   NSError *err = nil;
   [[AVAudioSession sharedInstance]
       setCategory:AVAudioSessionCategoryPlayback
@@ -91,27 +92,42 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   [[AVAudioSession sharedInstance] setActive:YES error:&err];
 
   if (!_silentPlayer) {
-    // Generate 1 sec of silence
-    NSMutableData *data =
-        [NSMutableData dataWithLength:44100 * 2]; // 1s 16bit mono
+    NSMutableData *data = [NSMutableData dataWithLength:44100 * 2];
     _silentPlayer = [[AVAudioPlayer alloc] initWithData:data
                                            fileTypeHint:AVFileTypeWAVE
                                                   error:&err];
-    _silentPlayer.numberOfLoops = -1; // Infinite
+    _silentPlayer.numberOfLoops = -1;
     _silentPlayer.volume = 0.0;
     [_silentPlayer prepareToPlay];
   }
   [_silentPlayer play];
-  [self log:@"[系统] 后台保活服务(音频) 已启动"];
+
+  // 2. Location (New Strong Keep-Alive)
+  if (!_locManager) {
+    _locManager = [[CLLocationManager alloc] init];
+    _locManager.allowsBackgroundLocationUpdates = YES;
+    _locManager.pausesLocationUpdatesAutomatically = NO;
+    _locManager.desiredAccuracy =
+        kCLLocationAccuracyThreeKilometers; // Low power
+    [_locManager requestAlwaysAuthorization];
+  }
+  [_locManager startUpdatingLocation];
+
+  // 3. Background Task Assertion
+  _bgTask = [[UIApplication sharedApplication]
+      beginBackgroundTaskWithExpirationHandler:^{
+        [[UIApplication sharedApplication] endBackgroundTask:self->_bgTask];
+        self->_bgTask = UIBackgroundTaskInvalid;
+      }];
+
+  [self log:@"[系统] 强效后台保活(音频+定位) 已启动"];
 }
 
 - (void)startAutomation {
   if (self.config.isRunning)
     return;
 
-  // 启动后台保活
-  [self setupBackgroundAudio];
-  // 显示悬浮窗
+  [self setupBackgrounds];
   [self showFloatingWindow];
 
   self.config = (TrollConfig){.startHour = self.config.startHour,
@@ -135,11 +151,15 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
   [self log:@"[*] 正在停止自动化服务..."];
 
-  // 停止音频
-  if (_silentPlayer) {
+  if (_silentPlayer)
     [_silentPlayer stop];
+  if (_locManager)
+    [_locManager stopUpdatingLocation];
+  if (_bgTask != UIBackgroundTaskInvalid) {
+    [[UIApplication sharedApplication] endBackgroundTask:_bgTask];
+    _bgTask = UIBackgroundTaskInvalid;
   }
-  // 隐藏悬浮窗
+
   [self hideFloatingWindow];
 
   TrollConfig newConfig = self.config;
