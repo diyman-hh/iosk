@@ -16,6 +16,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 @implementation AutomationManager {
   NSThread *_workerThread;
   AVAudioPlayer *_silentPlayer;
+  UIWindow *_floatingWindow;
 }
 
 + (instancetype)sharedManager {
@@ -23,7 +24,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
     shared = [[AutomationManager alloc] init];
-    shared.config = (TrollConfig){.startHour = 5,
+    shared.config = (TrollConfig){.startHour = 9,
                                   .endHour = 23,
                                   .minWatchSec = 3,
                                   .maxWatchSec = 8,
@@ -47,6 +48,38 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
       self.logHandler(msg);
     });
   }
+}
+
+- (void)showFloatingWindow {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if (!_floatingWindow) {
+      _floatingWindow = [[UIWindow alloc]
+          initWithFrame:CGRectMake(
+                            0, 0, [UIScreen mainScreen].bounds.size.width, 24)];
+      _floatingWindow.windowLevel = UIWindowLevelAlert + 1000;
+      _floatingWindow.backgroundColor =
+          [[UIColor blackColor] colorWithAlphaComponent:0.7];
+      _floatingWindow.userInteractionEnabled = NO;
+      _floatingWindow.rootViewController =
+          [UIViewController new]; // Required for iOS 9+
+
+      UILabel *lbl = [[UILabel alloc] initWithFrame:_floatingWindow.bounds];
+      lbl.text = @"TrollTouch 正在运行中... (保活生效)";
+      lbl.textColor = [UIColor greenColor];
+      lbl.textAlignment = NSTextAlignmentCenter;
+      lbl.font = [UIFont boldSystemFontOfSize:12];
+      [_floatingWindow addSubview:lbl];
+    }
+    _floatingWindow.hidden = NO;
+    [_floatingWindow makeKeyAndVisible];
+  });
+}
+
+- (void)hideFloatingWindow {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    _floatingWindow.hidden = YES;
+    _floatingWindow = nil;
+  });
 }
 
 - (void)setupBackgroundAudio {
@@ -78,6 +111,8 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
   // 启动后台保活
   [self setupBackgroundAudio];
+  // 显示悬浮窗
+  [self showFloatingWindow];
 
   self.config = (TrollConfig){.startHour = self.config.startHour,
                               .endHour = self.config.endHour,
@@ -104,6 +139,8 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   if (_silentPlayer) {
     [_silentPlayer stop];
   }
+  // 隐藏悬浮窗
+  [self hideFloatingWindow];
 
   TrollConfig newConfig = self.config;
   newConfig.isRunning = NO;
