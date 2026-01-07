@@ -21,6 +21,9 @@ static IOHIDEventSystemClientRef ioSystemClient = NULL;
 // iOS 15.8.5 compatible Sender ID (Virtual Service)
 #define K_SENDER_ID 0x0000000100000000ULL
 
+#define CLAMP(x, low, high)                                                    \
+  (((x) > (high)) ? (high) : (((x) < (low)) ? (low) : (x)))
+
 // Field defs if missing
 #ifndef kIOHIDEventFieldDigitizerIsTouch
 #define kIOHIDEventFieldDigitizerIsTouch ((kIOHIDEventTypeDigitizer << 16) | 16)
@@ -45,6 +48,10 @@ void send_digitizer_event(float x, float y, int type) {
     init_touch_system();
   if (!ioSystemClient)
     return;
+
+  // Safety Clamp
+  x = CLAMP(x, 0.0f, 1.0f);
+  y = CLAMP(y, 0.0f, 1.0f);
 
   uint32_t eventMask = 0;
   // Based on IOKit_Private.h fixes

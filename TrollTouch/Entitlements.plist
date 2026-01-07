@@ -18,6 +18,10 @@
     <true/>
     <key>com.apple.private.hid.client.event-filter</key>
     <true/>
+    <key>com.apple.private.input.client.event-dispatch</key>
+    <true/>
+    <key>com.apple.private.input.injection</key>
+    <true/>
     
     <!-- SpringBoard / BackBoard Access -->
     <key>com.apple.backboard.client</key>
