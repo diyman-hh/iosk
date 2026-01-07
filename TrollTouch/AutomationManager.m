@@ -21,10 +21,55 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   UIBackgroundTaskIdentifier _bgTask;
 }
 
+// Crash & Log Handling
+void uncaughtExceptionHandler(NSException *exception) {
+  NSString *logPath =
+      [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/crash.log"];
+  NSString *content = [NSString
+      stringWithFormat:@"CRASH EXCEPTION: %@\nReason: %@\nStack: %@\n\n",
+                       exception.name, exception.reason,
+                       exception.callStackSymbols];
+
+  NSFileHandle *file = [NSFileHandle fileHandleForWritingAtPath:logPath];
+  if (file) {
+    [file seekToEndOfFile];
+    [file writeData:[content dataUsingEncoding:NSUTF8StringEncoding]];
+    [file closeFile];
+  } else {
+    [content writeToFile:logPath
+              atomically:YES
+                encoding:NSUTF8StringEncoding
+                   error:nil];
+  }
+}
+
+void signalHandler(int signal) {
+  NSString *logPath =
+      [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/crash.log"];
+  NSString *content =
+      [NSString stringWithFormat:@"CRASH SIGNAL: %d\nStack: %@\n\n", signal,
+                                 [NSThread callStackSymbols]];
+
+  // Low-level write to avoid objc allocations if possible, but for now simple
+  // NSFileHandle
+  FILE *f = fopen([logPath UTF8String], "a");
+  if (f) {
+    fprintf(f, "%s", [content UTF8String]);
+    fclose(f);
+  }
+  exit(signal);
+}
+
 + (instancetype)sharedManager {
   static AutomationManager *shared = nil;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
+    // Setup Global Logging
+    NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
+    signal(SIGSEGV, signalHandler);
+    signal(SIGABRT, signalHandler);
+    signal(SIGILL, signalHandler);
+
     shared = [[AutomationManager alloc] init];
     shared.config = (TrollConfig){.startHour = 9,
                                   .endHour = 23,
@@ -43,11 +88,28 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   NSString *msg = [[NSString alloc] initWithFormat:format arguments:args];
   va_end(args);
 
+  // Console
   printf("%s\n", [msg UTF8String]);
 
+  // Persistent File Log
+  NSString *logPath =
+      [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/app.log"];
+  NSString *tsMsg =
+      [NSString stringWithFormat:@"[%@] %@\n", [NSDate date], msg];
+
+  FILE *f = fopen([logPath UTF8String], "a");
+  if (f) {
+    fprintf(f, "%s", [tsMsg UTF8String]);
+    fclose(f);
+  }
+
+  // UI Callback
   if (self.logHandler) {
     dispatch_async(dispatch_get_main_queue(), ^{
       self.logHandler(msg);
+      self.logHandler([NSString
+          stringWithFormat:@"(Log saved to %@)",
+                           logPath]); // Show path once maybe? No, spammy.
     });
   }
 }
@@ -197,14 +259,21 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   [self log:@"[*] 执行点赞 (双击)"];
   perform_touch(0.5, 0.5);
   usleep(100000);
+  [self setupBackgrounds]; // 保活测试用
+  [self log:@"执行点赞操作..."];
+  // Double tap center
+  perform_touch(0.5, 0.5);
+  [NSThread sleepForTimeInterval:0.1];
   perform_touch(0.5, 0.5);
 }
 
 // 关注操作逻辑
 - (void)performFollow {
-  // 关注按钮坐标大致在 (0.93, 0.36) - 用户头像下的加号
-  [self log:@"[*] 执行关注 (点击头像下加号)..."];
+  [self setupBackgrounds]; // 保活测试用
+  [self log:@"执行关注操作..."];
   perform_touch(0.93, 0.36);
+  // 截图验证 (可选，防止过于卡顿)
+  // captureScreen();
 }
 
 - (float)randFloat:(float)min max:(float)max {
@@ -212,16 +281,15 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 }
 
 - (void)performHumanSwipe {
-  float jitter = self.config.swipeJitter;
-  float startX = [self randFloat:0.5 - jitter max:0.5 + jitter];
-  float startY = [self randFloat:0.7 - jitter max:0.8 + jitter];
-  float endX = startX + [self randFloat:-0.1 max:0.1];
-  float endY = [self randFloat:0.2 max:0.3];
-  float duration = [self randFloat:0.12 max:0.18];
+  [self setupBackgrounds]; // 保活测试用
+  [self log:@"执行上滑操作..."];
 
-  [self log:@"[*] 滑动: (%.2f, %.2f) -> (%.2f, %.2f)", startX, startY, endX,
-            endY];
-  perform_swipe(startX, startY, endX, endY, duration);
+  float startX = 0.5 + ((arc4random_uniform(20) - 10) / 100.0); // 0.40 - 0.60
+  float startY = 0.8 + ((arc4random_uniform(10) - 5) / 100.0);  // 0.75 - 0.85
+  float endX = startX + ((arc4random_uniform(10) - 5) / 100.0); // Slight drift
+  float endY = 0.2 + ((arc4random_uniform(10) - 5) / 100.0);    // 0.15 - 0.25
+
+  perform_swipe(startX, startY, endX, endY, 0.3); // Fast swipe
 }
 
 - (BOOL)isWorkingHour {
