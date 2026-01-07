@@ -21,6 +21,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   NSThread *_workerThread;
   AVAudioRecorder *_audioRecorder;
   UIBackgroundTaskIdentifier _bgTask;
+  UIWindow *_overlayWindow;
 }
 
 // Log Path Helper - Public Downloads for easy access via Files app / 3uTools
@@ -150,6 +151,47 @@ void signalHandler(int signal) {
        withCompletionHandler:nil];
 }
 
+- (void)setupOverlayWindow {
+  if (_overlayWindow)
+    return;
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    CGRect screenBounds = [[UIScreen mainScreen] bounds];
+    self->_overlayWindow = [[UIWindow alloc] initWithFrame:screenBounds];
+    self->_overlayWindow.windowLevel = UIWindowLevelAlert + 1;
+    self->_overlayWindow.backgroundColor = [UIColor clearColor];
+    self->_overlayWindow.opaque = NO;
+    self->_overlayWindow.alpha = 0.01;
+    self->_overlayWindow.userInteractionEnabled = NO;
+
+    UILabel *statusLabel = [[UILabel alloc]
+        initWithFrame:CGRectMake(screenBounds.size.width - 60, 20, 50, 20)];
+    statusLabel.text = @"🤖";
+    statusLabel.font = [UIFont systemFontOfSize:16];
+    statusLabel.textColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.7];
+    statusLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.3];
+    statusLabel.textAlignment = NSTextAlignmentCenter;
+    statusLabel.layer.cornerRadius = 10;
+    statusLabel.clipsToBounds = YES;
+    [self->_overlayWindow addSubview:statusLabel];
+
+    self->_overlayWindow.hidden = NO;
+    [self->_overlayWindow makeKeyAndVisible];
+
+    [self log:@"[系统] 透明覆盖窗口已创建"];
+  });
+}
+
+- (void)removeOverlayWindow {
+  if (!_overlayWindow)
+    return;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self->_overlayWindow.hidden = YES;
+    self->_overlayWindow = nil;
+    [self log:@"[系统] 透明覆盖窗口已移除"];
+  });
+}
+
 - (void)setupBackgrounds {
   // 1. Audio Recording (Aggressive Keep-Alive)
   NSError *err = nil;
@@ -191,7 +233,8 @@ void signalHandler(int signal) {
 
   [self setupNotifications];
   [self setupBackgrounds];
-  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (录音保活模式)"];
+  [self setupOverlayWindow];
+  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (前台模式)"];
 
   self.config = (TrollConfig){.startHour = self.config.startHour,
                               .endHour = self.config.endHour,
@@ -220,6 +263,8 @@ void signalHandler(int signal) {
     return;
 
   [self log:@"[*] 正在停止自动化服务..."];
+
+  [self removeOverlayWindow];
 
   if (_audioRecorder)
     [_audioRecorder stop];
