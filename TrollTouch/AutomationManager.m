@@ -158,27 +158,104 @@ void signalHandler(int signal) {
   dispatch_async(dispatch_get_main_queue(), ^{
     CGRect screenBounds = [[UIScreen mainScreen] bounds];
     self->_overlayWindow = [[UIWindow alloc] initWithFrame:screenBounds];
+
+    // Set window level above alert to stay on top
     self->_overlayWindow.windowLevel = UIWindowLevelAlert + 1;
+
+    // Start with semi-transparent for debugging (can be adjusted)
     self->_overlayWindow.backgroundColor = [UIColor clearColor];
     self->_overlayWindow.opaque = NO;
-    self->_overlayWindow.alpha = 0.01;
+    self->_overlayWindow.alpha = 1.0; // Fully visible initially
+
+    // CRITICAL: Allow touches to pass through to apps below
     self->_overlayWindow.userInteractionEnabled = NO;
 
-    UILabel *statusLabel = [[UILabel alloc]
-        initWithFrame:CGRectMake(screenBounds.size.width - 60, 20, 50, 20)];
-    statusLabel.text = @"🤖";
-    statusLabel.font = [UIFont systemFontOfSize:16];
-    statusLabel.textColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.7];
-    statusLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.3];
-    statusLabel.textAlignment = NSTextAlignmentCenter;
-    statusLabel.layer.cornerRadius = 10;
-    statusLabel.clipsToBounds = YES;
-    [self->_overlayWindow addSubview:statusLabel];
+    // Create a visible status bar at the top
+    UIView *statusBar = [[UIView alloc]
+        initWithFrame:CGRectMake(0, 0, screenBounds.size.width, 44)];
+    statusBar.backgroundColor = [UIColor colorWithRed:1.0
+                                                green:0.0
+                                                 blue:0.0
+                                                alpha:0.8]; // Red background
+    statusBar.tag = 999; // For later reference
 
+    // Status label
+    UILabel *statusLabel = [[UILabel alloc]
+        initWithFrame:CGRectMake(10, 0, screenBounds.size.width - 20, 44)];
+    statusLabel.text = @"TrollTouch 运行中 (前台模式)";
+    statusLabel.font = [UIFont boldSystemFontOfSize:14];
+    statusLabel.textColor = [UIColor whiteColor];
+    statusLabel.textAlignment = NSTextAlignmentCenter;
+    statusLabel.tag = 1000;
+    [statusBar addSubview:statusLabel];
+
+    // Add size info label
+    UILabel *sizeLabel = [[UILabel alloc]
+        initWithFrame:CGRectMake(10, 22, screenBounds.size.width - 20, 20)];
+    sizeLabel.text = [NSString stringWithFormat:@"窗口: %.0f x %.0f",
+                                                screenBounds.size.width,
+                                                screenBounds.size.height];
+    sizeLabel.font = [UIFont systemFontOfSize:10];
+    sizeLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.8];
+    sizeLabel.textAlignment = NSTextAlignmentCenter;
+    [statusBar addSubview:sizeLabel];
+
+    [self->_overlayWindow addSubview:statusBar];
+
+    // Add corner indicators to show window bounds
+    [self addCornerIndicators:self->_overlayWindow];
+
+    // Make window visible
     self->_overlayWindow.hidden = NO;
     [self->_overlayWindow makeKeyAndVisible];
 
-    [self log:@"[系统] 透明覆盖窗口已创建"];
+    [self log:@"[系统] 透明覆盖窗口已创建 - 尺寸: %.0fx%.0f",
+              screenBounds.size.width, screenBounds.size.height];
+  });
+}
+
+- (void)addCornerIndicators:(UIWindow *)window {
+  CGRect bounds = window.bounds;
+  CGFloat size = 20;
+
+  // Top-left
+  UIView *tl = [[UIView alloc] initWithFrame:CGRectMake(0, 44, size, size)];
+  tl.backgroundColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8];
+  [window addSubview:tl];
+
+  // Top-right
+  UIView *tr = [[UIView alloc]
+      initWithFrame:CGRectMake(bounds.size.width - size, 44, size, size)];
+  tr.backgroundColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8];
+  [window addSubview:tr];
+
+  // Bottom-left
+  UIView *bl = [[UIView alloc]
+      initWithFrame:CGRectMake(0, bounds.size.height - size, size, size)];
+  bl.backgroundColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8];
+  [window addSubview:bl];
+
+  // Bottom-right
+  UIView *br = [[UIView alloc]
+      initWithFrame:CGRectMake(bounds.size.width - size,
+                               bounds.size.height - size, size, size)];
+  br.backgroundColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8];
+  [window addSubview:br];
+}
+
+- (void)updateOverlayAlpha:(CGFloat)alpha {
+  if (!_overlayWindow)
+    return;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    // Only update the status bar alpha, keep window at 1.0
+    UIView *statusBar = [self->_overlayWindow viewWithTag:999];
+    if (statusBar) {
+      statusBar.backgroundColor = [UIColor colorWithRed:1.0
+                                                  green:0.0
+                                                   blue:0.0
+                                                  alpha:alpha];
+    }
+    [self log:@"[系统] 覆盖窗口透明度已更新: %.2f", alpha];
   });
 }
 
