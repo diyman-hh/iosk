@@ -152,104 +152,66 @@ void signalHandler(int signal) {
        withCompletionHandler:nil];
 }
 
-- (void)setupOverlayWindow {
+- (void)setupPiPWindow {
   if (_overlayWindow)
     return;
 
   dispatch_async(dispatch_get_main_queue(), ^{
     CGRect screenBounds = [[UIScreen mainScreen] bounds];
-    self->_overlayWindow = [[UIWindow alloc] initWithFrame:screenBounds];
 
-    // Set window level above alert to stay on top
+    // Create small PiP window in bottom-right corner
+    CGFloat pipWidth = 80;
+    CGFloat pipHeight = 120;
+    CGFloat margin = 10;
+    CGRect pipFrame =
+        CGRectMake(screenBounds.size.width - pipWidth - margin,
+                   screenBounds.size.height - pipHeight - margin - 50, pipWidth,
+                   pipHeight);
+
+    self->_overlayWindow = [[UIWindow alloc] initWithFrame:pipFrame];
     self->_overlayWindow.windowLevel = UIWindowLevelAlert + 1;
+    self->_overlayWindow.backgroundColor = [UIColor colorWithWhite:0.1
+                                                             alpha:0.85];
+    self->_overlayWindow.layer.cornerRadius = 12;
+    self->_overlayWindow.layer.borderWidth = 2;
+    self->_overlayWindow.layer.borderColor =
+        [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8].CGColor;
+    self->_overlayWindow.clipsToBounds = YES;
 
-    // Start with semi-transparent for debugging (can be adjusted)
-    self->_overlayWindow.backgroundColor = [UIColor clearColor];
-    self->_overlayWindow.opaque = NO;
-    self->_overlayWindow.alpha = 1.0; // Fully visible initially
+    // Status indicator
+    UILabel *statusIcon =
+        [[UILabel alloc] initWithFrame:CGRectMake(0, 10, pipWidth, 30)];
+    statusIcon.text = @"🤖";
+    statusIcon.font = [UIFont systemFontOfSize:24];
+    statusIcon.textAlignment = NSTextAlignmentCenter;
+    [self->_overlayWindow addSubview:statusIcon];
 
-    // CRITICAL: Allow touches to pass through to apps below
-    self->_overlayWindow.userInteractionEnabled = NO;
-
-    // Create a visible status bar at the top
-    UIView *statusBar = [[UIView alloc]
-        initWithFrame:CGRectMake(0, 0, screenBounds.size.width, 44)];
-    statusBar.backgroundColor = [UIColor colorWithRed:1.0
-                                                green:0.0
-                                                 blue:0.0
-                                                alpha:0.8]; // Red background
-    statusBar.tag = 999; // For later reference
-
-    // Status label
-    UILabel *statusLabel = [[UILabel alloc]
-        initWithFrame:CGRectMake(10, 0, screenBounds.size.width - 20, 44)];
-    statusLabel.text = @"TrollTouch 运行中 (前台模式)";
-    statusLabel.font = [UIFont boldSystemFontOfSize:14];
-    statusLabel.textColor = [UIColor whiteColor];
+    // Status text
+    UILabel *statusLabel =
+        [[UILabel alloc] initWithFrame:CGRectMake(5, 45, pipWidth - 10, 40)];
+    statusLabel.text = @"运行中";
+    statusLabel.font = [UIFont boldSystemFontOfSize:12];
+    statusLabel.textColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
     statusLabel.textAlignment = NSTextAlignmentCenter;
+    statusLabel.numberOfLines = 2;
     statusLabel.tag = 1000;
-    [statusBar addSubview:statusLabel];
+    [self->_overlayWindow addSubview:statusLabel];
 
-    // Add size info label
-    UILabel *sizeLabel = [[UILabel alloc]
-        initWithFrame:CGRectMake(10, 22, screenBounds.size.width - 20, 20)];
-    sizeLabel.text = [NSString stringWithFormat:@"窗口: %.0f x %.0f",
-                                                screenBounds.size.width,
-                                                screenBounds.size.height];
-    sizeLabel.font = [UIFont systemFontOfSize:10];
-    sizeLabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.8];
-    sizeLabel.textAlignment = NSTextAlignmentCenter;
-    [statusBar addSubview:sizeLabel];
+    // Counter label
+    UILabel *counterLabel =
+        [[UILabel alloc] initWithFrame:CGRectMake(5, 85, pipWidth - 10, 30)];
+    counterLabel.text = @"0 操作";
+    counterLabel.font = [UIFont systemFontOfSize:10];
+    counterLabel.textColor = [UIColor whiteColor];
+    counterLabel.textAlignment = NSTextAlignmentCenter;
+    counterLabel.tag = 1001;
+    [self->_overlayWindow addSubview:counterLabel];
 
-    [self->_overlayWindow addSubview:statusBar];
-
-    // Add corner indicators to show window bounds
-    [self addCornerIndicators:self->_overlayWindow];
-
-    // Make window visible
     self->_overlayWindow.hidden = NO;
     [self->_overlayWindow makeKeyAndVisible];
 
-    [self log:@"[系统] 透明覆盖窗口已创建 - 尺寸: %.0fx%.0f",
-              screenBounds.size.width, screenBounds.size.height];
-
-    // Start timer to keep window visible
-    self->_windowKeepAliveTimer =
-        [NSTimer scheduledTimerWithTimeInterval:5.0
-                                         target:self
-                                       selector:@selector(ensureOverlayVisible)
-                                       userInfo:nil
-                                        repeats:YES];
+    [self log:@"[系统] PiP 控制窗口已创建"];
   });
-}
-
-- (void)addCornerIndicators:(UIWindow *)window {
-  CGRect bounds = window.bounds;
-  CGFloat size = 20;
-
-  // Top-left
-  UIView *tl = [[UIView alloc] initWithFrame:CGRectMake(0, 44, size, size)];
-  tl.backgroundColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8];
-  [window addSubview:tl];
-
-  // Top-right
-  UIView *tr = [[UIView alloc]
-      initWithFrame:CGRectMake(bounds.size.width - size, 44, size, size)];
-  tr.backgroundColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8];
-  [window addSubview:tr];
-
-  // Bottom-left
-  UIView *bl = [[UIView alloc]
-      initWithFrame:CGRectMake(0, bounds.size.height - size, size, size)];
-  bl.backgroundColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8];
-  [window addSubview:bl];
-
-  // Bottom-right
-  UIView *br = [[UIView alloc]
-      initWithFrame:CGRectMake(bounds.size.width - size,
-                               bounds.size.height - size, size, size)];
-  br.backgroundColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8];
-  [window addSubview:br];
 }
 
 - (void)updateOverlayAlpha:(CGFloat)alpha {

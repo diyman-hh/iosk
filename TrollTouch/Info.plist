@@ -27,7 +27,9 @@
     <key>NSPhotoLibraryUsageDescription</key>
     <string>保存截图需要相册权限</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>后台保活需要使用麦克风</string>
+    <string>TrollTouch 需要使用麦克风进行后台录音以保持应用活跃状态</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>TrollTouch 需要辅助功能权限来自动化 TikTok 操作</string>
     <key>UIBackgroundModes</key>
     <array>
         <string>audio</string>
