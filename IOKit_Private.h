@@ -54,30 +54,36 @@ enum {
 
 // --- Function Prototypes (Private) ---
 
-// Create the system client which connects to the HID system
-IOHIDEventSystemClientRef
-IOHIDEventSystemClientCreate(CFAllocatorRef allocator);
+// --- IOHIDEvent System Client ---
 
-// Create a digitizer (touch) event
+// Create a client
+IOHIDEventSystemClientRef IOHIDEventSystemClientCreate(CFAllocatorRef allocator)
+    __attribute__((weak_import));
+
+// Create Digitizer Event (Touch)
 IOHIDEventRef IOHIDEventCreateDigitizerEvent(
     CFAllocatorRef allocator, uint64_t timeStamp, uint32_t transducerType,
     uint32_t index, uint32_t identity, uint32_t eventMask, uint32_t buttonMask,
     float x, float y, float z, float tipPressure, float barrelPressure,
-    Boolean range, Boolean touch, uint32_t options);
+    Boolean range, Boolean touch, uint32_t options)
+    __attribute__((weak_import));
 
 // Set the sender ID (Critical for iOS 14+)
-void IOHIDEventSetSenderID(IOHIDEventRef event, uint64_t senderID);
+void IOHIDEventSetSenderID(IOHIDEventRef event, uint64_t senderID)
+    __attribute__((weak_import));
 
 // Set Integer Value (For updating fields like Touch/Range state)
-void IOHIDEventSetIntegerValue(IOHIDEventRef event, uint32_t field, int value);
+void IOHIDEventSetIntegerValue(IOHIDEventRef event, uint32_t field, int value)
+    __attribute__((weak_import));
 
 // Dispatch the event to the system
 void IOHIDEventSystemClientDispatchEvent(IOHIDEventSystemClientRef client,
-                                         IOHIDEventRef event);
+                                         IOHIDEventRef event)
+    __attribute__((weak_import));
 
 // --- Helpers ---
 
 // Getting uptime for timestamp
-extern uint64_t mach_absolute_time(void);
+extern uint64_t mach_absolute_time(void) __attribute__((weak_import));
 
 #endif /* IOKit_Private_h */
