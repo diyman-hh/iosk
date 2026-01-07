@@ -46,47 +46,78 @@ void init_touch_system() {
 void send_digitizer_event(float x, float y, int type) {
   if (!ioSystemClient)
     init_touch_system();
-  if (!ioSystemClient)
+  if (!ioSystemClient) {
+    printf("[TouchSim] ERROR: No IOHIDEventSystemClient!\n");
     return;
+  }
 
   // Safety Clamp
   x = CLAMP(x, 0.0f, 1.0f);
   y = CLAMP(y, 0.0f, 1.0f);
 
   uint32_t eventMask = 0;
-  // Based on IOKit_Private.h fixes
-  if (type == 1)
+  uint32_t touchValue = 0;
+
+  // Based on IOKit_Private.h - more precise event masks for iOS 15
+  if (type == 1) { // Touch Down
     eventMask = kIOHIDDigitizerEventTouch | kIOHIDDigitizerEventRange |
                 kIOHIDDigitizerEventStart;
-  if (type == 2)
+    touchValue = 1;
+  } else if (type == 2) { // Touch Move
     eventMask = kIOHIDDigitizerEventTouch | kIOHIDDigitizerEventRange |
                 kIOHIDDigitizerEventPosition;
-  if (type == 3)
-    eventMask = kIOHIDDigitizerEventTouch | kIOHIDDigitizerEventRange |
-                kIOHIDDigitizerEventStop | kIOHIDDigitizerEventIdentity;
+    touchValue = 1;
+  } else if (type == 3) { // Touch Up
+    eventMask = kIOHIDDigitizerEventRange | kIOHIDDigitizerEventIdentity;
+    touchValue = 0;
+  }
 
   uint64_t now = mach_absolute_time();
 
-  // iOS 11+ Signature
-  IOHIDEventRef event = IOHIDEventCreateDigitizerEvent(
-      kCFAllocatorDefault, now, kIOHIDEventTypeDigitizer, 0, 1, eventMask, 0, x,
-      y, 0, 0, 0, 0, 0, 0);
+  // Create digitizer event with normalized coordinates (0.0 - 1.0)
+  IOHIDEventRef event = IOHIDEventCreateDigitizerEvent(kCFAllocatorDefault, now,
+                                                       kIOHIDEventTypeDigitizer,
+                                                       0, // digitizer index
+                                                       1, // finger index
+                                                       eventMask,
+                                                       0,    // button mask
+                                                       x, y, // normalized X, Y
+                                                       0,    // Z
+                                                       0,    // tip pressure
+                                                       0,    // barrel pressure
+                                                       0,    // twist
+                                                       0,    // range
+                                                       0     // touch
+  );
 
-  if (!event)
+  if (!event) {
+    printf("[TouchSim] ERROR: Failed to create event!\n");
     return;
+  }
 
-  // Set standard fields manually for safety
-  IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerTouch,
-                            (type == 3) ? 0 : 1);
+  // Set all required fields explicitly for iOS 15 compatibility
+  IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerTouch, touchValue);
   IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerRange,
                             (type == 3) ? 0 : 1);
-
-  // iOS 15+ might check this
   IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIsTouch,
-                            (type == 3) ? 0 : 1);
+                            touchValue);
 
+  // Set index and identity
+  IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIndex, 0);
+  IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIdentity, 1);
+
+  // Set event type
+  IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerType,
+                            kIOHIDDigitizerTransducerTypeFinger);
+
+  // Critical: Set sender ID for iOS 15
   IOHIDEventSetSenderID(event, K_SENDER_ID);
+
+  // Dispatch the event
+  printf("[TouchSim] Dispatching type=%d mask=0x%x x=%.2f y=%.2f\n", type,
+         eventMask, x, y);
   IOHIDEventSystemClientDispatchEvent(ioSystemClient, event);
+
   CFRelease(event);
 }
 
