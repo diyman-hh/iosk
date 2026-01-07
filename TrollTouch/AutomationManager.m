@@ -339,23 +339,6 @@ void signalHandler(int signal) {
   dlclose(handle);
 }
 
-- (void)ensureOverlayVisible {
-  if (!_overlayWindow)
-    return;
-
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if (self->_overlayWindow) {
-      self->_overlayWindow.hidden = NO;
-      [self->_overlayWindow makeKeyAndVisible];
-
-      // Force window to stay on top
-      self->_overlayWindow.windowLevel = UIWindowLevelAlert + 2;
-
-      [self log:@"[系统] 覆盖窗口已重新显示"];
-    }
-  });
-}
-
 - (void)performLike {
   [self log:@"[*] 执行点赞 (坐标: 0.50, 0.50)"];
   [self setupBackgrounds];
