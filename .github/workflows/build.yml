@@ -28,17 +28,16 @@ jobs:
 
       - name: Build IPA
         run: |
-          cd TrollTouch
           make FINALPACKAGE=1
           # Manual IPA Packaging
           mkdir -p Payload
           APP_PATH=$(find .theos -type d -name "TrollTouch.app" | head -n 1)
           cp -r "$APP_PATH" Payload/
-          cp Info.plist Payload/TrollTouch.app/Info.plist
+          cp TrollTouch/Info.plist Payload/TrollTouch.app/Info.plist
           zip -r TrollTouch.ipa Payload
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: TrollTouch_IPA
-          path: TrollTouch/TrollTouch.ipa
+          path: TrollTouch.ipa
