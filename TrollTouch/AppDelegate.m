@@ -1,3 +1,8 @@
+//
+//  AppDelegate.m
+//  TrollTouch (Simplified for XCTest)
+//
+
 #import "AppDelegate.h"
 #import "RootViewController.h"
 
