@@ -92,10 +92,8 @@ typedef mach_port_t (*BKSHIDServicesCopyEventPortFunc)(void);
   usleep(50000);                          // 50ms
 
   // Send touch up
-  [self sendTouchEventAtX:x
-                        y:y
-                    phase:3]; // kIOHIDDigitizerEventRange |
-                              // kIOHIDDigitizerEventTouch
+  [self sendTouchEventAtX:x y:y phase:3]; // kIOHIDDigitizerEventRange |
+                                          // kIOHIDDigitizerEventTouch
 }
 
 - (void)swipeFromX:(float)x1
@@ -142,39 +140,51 @@ typedef mach_port_t (*BKSHIDServicesCopyEventPortFunc)(void);
   float absX = x * screenBounds.size.width * scale;
   float absY = y * screenBounds.size.height * scale;
 
-  // Create digitizer event
+  // Create digitizer event using correct signature from IOKit_Private.h
   uint64_t machTime = mach_absolute_time();
-  AbsoluteTime timestamp = *(AbsoluteTime *)&machTime;
 
   uint32_t eventMask = 0;
+  Boolean range = NO;
+  Boolean touch = NO;
+
   switch (phase) {
   case 1: // Touch down
     eventMask = kIOHIDDigitizerEventRange | kIOHIDDigitizerEventTouch |
                 kIOHIDDigitizerEventIdentity;
+    range = YES;
+    touch = YES;
     break;
   case 2: // Move
     eventMask = kIOHIDDigitizerEventPosition;
+    range = YES;
+    touch = YES;
     break;
   case 3: // Touch up
     eventMask = kIOHIDDigitizerEventRange | kIOHIDDigitizerEventTouch;
+    range = NO;
+    touch = NO;
     break;
   }
 
-  IOHIDEventRef event = IOHIDEventCreateDigitizerFingerEvent(
-      kCFAllocatorDefault, timestamp,
-      0, // index
-      1, // identity
+  IOHIDEventRef event = IOHIDEventCreateDigitizerEvent(
+      kCFAllocatorDefault, machTime,
+      kIOHIDDigitizerTransducerTypeFinger, // transducerType
+      0,                                   // index
+      1,                                   // identity
       eventMask,
+      0,                      // buttonMask
       absX,                   // x
       absY,                   // y
       0.0,                    // z
-      phase == 3 ? 0.0 : 1.0, // tip pressure (0 for up, 1 for down/move)
-      0.0,                    // twist
-      phase != 3              // range (true for down/move, false for up)
+      phase == 3 ? 0.0 : 1.0, // tip pressure
+      0.0,                    // barrel pressure
+      range,                  // range
+      touch,                  // touch
+      0                       // options
   );
 
   if (event) {
-    // Set additional fields
+    // Set additional fields using correct field constant
     IOHIDEventSetIntegerValue(event,
                               kIOHIDEventFieldDigitizerIsDisplayIntegrated, 1);
 
