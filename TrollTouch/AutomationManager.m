@@ -22,7 +22,6 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   AVAudioRecorder *_audioRecorder;
   UIBackgroundTaskIdentifier _bgTask;
   UIWindow *_overlayWindow;
-  NSTimer *_windowKeepAliveTimer;
 }
 
 // Log Path Helper - Public Downloads for easy access via Files app / 3uTools
@@ -214,36 +213,14 @@ void signalHandler(int signal) {
   });
 }
 
-- (void)updateOverlayAlpha:(CGFloat)alpha {
-  if (!_overlayWindow)
-    return;
-  dispatch_async(dispatch_get_main_queue(), ^{
-    // Only update the status bar alpha, keep window at 1.0
-    UIView *statusBar = [self->_overlayWindow viewWithTag:999];
-    if (statusBar) {
-      statusBar.backgroundColor = [UIColor colorWithRed:1.0
-                                                  green:0.0
-                                                   blue:0.0
-                                                  alpha:alpha];
-    }
-    [self log:@"[系统] 覆盖窗口透明度已更新: %.2f", alpha];
-  });
-}
-
 - (void)removeOverlayWindow {
   if (!_overlayWindow)
     return;
 
-  // Stop keep-alive timer
-  if (_windowKeepAliveTimer) {
-    [_windowKeepAliveTimer invalidate];
-    _windowKeepAliveTimer = nil;
-  }
-
   dispatch_async(dispatch_get_main_queue(), ^{
     self->_overlayWindow.hidden = YES;
     self->_overlayWindow = nil;
-    [self log:@"[系统] 透明覆盖窗口已移除"];
+    [self log:@"[系统] PiP 窗口已移除"];
   });
 }
 
@@ -288,8 +265,8 @@ void signalHandler(int signal) {
 
   [self setupNotifications];
   [self setupBackgrounds];
-  [self setupOverlayWindow];
-  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (前台模式)"];
+  [self setupPiPWindow]; // Small floating control panel
+  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (PiP模式)"];
 
   self.config = (TrollConfig){.startHour = self.config.startHour,
                               .endHour = self.config.endHour,
@@ -360,10 +337,6 @@ void signalHandler(int signal) {
                                        false);
   }
   dlclose(handle);
-
-  // Critical: Re-show overlay window after TikTok launches
-  [NSThread sleepForTimeInterval:2.0];
-  [self ensureOverlayVisible];
 }
 
 - (void)ensureOverlayVisible {
