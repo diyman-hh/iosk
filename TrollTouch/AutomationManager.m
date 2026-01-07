@@ -6,7 +6,6 @@
 #import <UIKit/UIKit.h>
 #import <dlfcn.h>
 
-
 // Internal Configuration
 #define TIKTOK_GLOBAL @"com.zhiliaoapp.musically"
 #define TIKTOK_CHINA @"com.ss.iphone.ugc.Aweme"
@@ -58,7 +57,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
                               .swipeJitter = self.config.swipeJitter,
                               .isRunning = YES};
 
-  [self log:@"[*] Starting Automation Service..."];
+  [self log:@"[*] 自动化服务已启动..."];
 
   _workerThread = [[NSThread alloc] initWithTarget:self
                                           selector:@selector(automationLoop)
@@ -70,7 +69,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   if (!self.config.isRunning)
     return;
 
-  [self log:@"[*] Stopping Automation Service..."];
+  [self log:@"[*] 正在停止自动化服务..."];
 
   TrollConfig newConfig = self.config;
   newConfig.isRunning = NO;
@@ -84,10 +83,10 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   return self.config.isRunning;
 }
 
-// --- Logic ---
+// --- 逻辑 ---
 
 - (void)launchTikTok {
-  [self log:@"[*] Launching TikTok..."];
+  [self log:@"[*] 正在启动 TikTok..."];
   void *handle = dlopen("/System/Library/PrivateFrameworks/"
                         "SpringBoardServices.framework/SpringBoardServices",
                         RTLD_LAZY);
@@ -107,10 +106,17 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 }
 
 - (void)performLike {
-  [self log:@"[*] Liking (Double Tap)"];
+  [self log:@"[*] 执行点赞 (双击)"];
   perform_touch(0.5, 0.5);
   usleep(100000);
   perform_touch(0.5, 0.5);
+}
+
+// 关注操作逻辑
+- (void)performFollow {
+  // 关注按钮坐标大致在 (0.93, 0.36) - 用户头像下的加号
+  [self log:@"[*] 执行关注 (点击头像下加号)..."];
+  perform_touch(0.93, 0.36);
 }
 
 - (float)randFloat:(float)min max:(float)max {
@@ -125,7 +131,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   float endY = [self randFloat:0.2 max:0.3];
   float duration = [self randFloat:0.12 max:0.18];
 
-  [self log:@"[*] Swipe (%.2f, %.2f) -> (%.2f, %.2f)", startX, startY, endX,
+  [self log:@"[*] 滑动: (%.2f, %.2f) -> (%.2f, %.2f)", startX, startY, endX,
             endY];
   perform_swipe(startX, startY, endX, endY, duration);
 }
@@ -142,85 +148,91 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   }
 }
 
-// Feature 6: Auto Publish Macro
+// 功能 6: 自动发布宏
 - (void)performAutoPublish {
-  [self log:@"[*] --- Starting Auto-Publish ---"];
+  [self log:@"[*] --- 开始自动发布流程 ---"];
 
-  // 1. Tap '+' (Center Bottom)
-  // Coords approx: 0.5, 0.93
-  [self log:@"[*] Tapping '+'..."];
+  // 1. 点击 '+' (底部中间)
+  [self log:@"[*] 点击 '+'..."];
   perform_touch(0.5, 0.93);
   [NSThread sleepForTimeInterval:2.5];
 
-  // 2. Tap 'Upload' (Bottom Right)
-  // Coords approx: 0.85, 0.85
-  [self log:@"[*] Tapping Upload..."];
+  // 2. 点击 '上传' (底部右侧)
+  [self log:@"[*] 点击 '上传'..."];
   perform_touch(0.85, 0.85);
   [NSThread sleepForTimeInterval:2.5];
 
-  // 3. Select 1st Video (Top Left)
-  // Coords approx: 0.16, 0.20
-  [self log:@"[*] Selecting Video..."];
+  // 3. 选择第1个视频 (左上角)
+  [self log:@"[*] 选择第一个视频..."];
   perform_touch(0.16, 0.20);
   [NSThread sleepForTimeInterval:1.5];
 
-  // 4. Tap Next (Bottom Right)
-  [self log:@"[*] Tapping Next..."];
+  // 4. 点击 下一步 (底部右侧)
+  [self log:@"[*] 点击 '下一步'..."];
   perform_touch(0.85, 0.93);
   [NSThread sleepForTimeInterval:4.0];
 
-  // 5. Tap Next (Edit Page)
-  [self log:@"[*] Tapping Next (Edit)..."];
+  // 5. 点击 下一步 (编辑页)
+  [self log:@"[*] 点击 '下一步' (编辑页)..."];
   perform_touch(0.85, 0.93);
   [NSThread sleepForTimeInterval:3.0];
 
-  // 6. Tap Post
-  [self log:@"[*] Tapping POST!"];
+  // 6. 点击 发布
+  [self log:@"[*] 点击 '发布' !"];
   perform_touch(0.85, 0.93);
   [NSThread sleepForTimeInterval:5.0];
 
-  [self log:@"[*] Auto-Publish Done."];
+  [self log:@"[*] 自动发布完成。"];
 
-  // Return to feed (Tap Home bottom left)
+  // 返回推荐页 (点击左下角首页)
   perform_touch(0.08, 0.93);
   [NSThread sleepForTimeInterval:2.0];
 }
 
 - (void)automationLoop {
+  // 5秒倒计时启动
+  for (int i = 5; i > 0; i--) {
+    [self log:@"[*] %d秒后开始执行...", i];
+    [NSThread sleepForTimeInterval:1.0];
+    if (!self.config.isRunning)
+      return;
+  }
+
   [self launchTikTok];
   [NSThread sleepForTimeInterval:5.0];
 
   int count = 0;
   while (self.config.isRunning && ![[NSThread currentThread] isCancelled]) {
     if (![self isWorkingHour]) {
-      [self log:@"[-] Outside working hours. Sleeping 5 mins..."];
+      [self log:@"[-] 非工作时间，暂停5分钟..."];
       [NSThread sleepForTimeInterval:300];
       continue;
     }
 
-    // --- Feature: State Detection ---
+    // --- 状态检测 ---
     UIImage *screen = captureScreen();
     if (screen) {
       BOOL isFeed = isVideoFeed(screen);
       if (!isFeed) {
-        [self log:@"[!] Warning: Visual check suggests we are NOT on Video "
-                  @"Feed."];
+        [self log:@"[!] 警告: 视觉检测显示当前可能不在视频推荐页。"];
+        // 尝试自动纠正：点击首页
+        // perform_touch(0.08, 0.93);
       }
     }
 
     count++;
-    [self log:@"\n--- Video #%d ---", count];
+    [self log:@"\n--- 视频 #%d ---", count];
 
-    // --- Feature: Auto Publish (Every 50 videos) ---
+    // --- 自动发布 (每50个视频) ---
     if (count % 50 == 0) {
       [self performAutoPublish];
-      continue; // Skip the rest of the loop
+      continue;
     }
 
-    // --- Feature: OCR Stats (Every 15 videos) ---
+    // --- OCR 查房 (每15个视频) ---
     if (count % 15 == 0) {
-      [self log:@"[*] Checking Profile Stats (OCR)..."];
-      // Swipe Left
+      [self log:@"[*] 检查个人主页数据 (OCR)..."];
+      // 左滑进入主页
       perform_swipe(0.8, 0.5, 0.2, 0.5, 0.3);
       [NSThread sleepForTimeInterval:2.0];
 
@@ -228,46 +240,51 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
       if (profileImg) {
         recognizeText(profileImg, ^(NSString *res) {
           if (res) {
-            // Sanitize newlines
             NSString *log = [res stringByReplacingOccurrencesOfString:@"\n"
                                                            withString:@" | "];
             if (log.length > 60)
               log = [log substringToIndex:60];
-            [self log:@"[OCR] Found: %@", log];
+            [self log:@"[OCR 识别结果] %@", log];
           }
         });
       }
-      // Swipe Right Back
+      // 右滑返回
       [NSThread sleepForTimeInterval:2.0];
       perform_swipe(0.2, 0.5, 0.8, 0.5, 0.3);
     }
 
-    // Random Watch
+    // 随机观看时长
     int interval = self.config.maxWatchSec - self.config.minWatchSec;
     if (interval < 1)
       interval = 1;
     int watchTime = self.config.minWatchSec + (arc4random() % interval);
-    [self log:@"[*] Watching %ds", watchTime];
+    [self log:@"[*] 观看 %d 秒...", watchTime];
     [NSThread sleepForTimeInterval:watchTime];
 
     if (!self.config.isRunning)
       break;
 
-    // Like Chance
+    // 随机点赞
     if (arc4random() % 2 == 0) {
       [self performLike];
       [NSThread sleepForTimeInterval:[self randFloat:0.5 max:1.5]];
     }
 
+    // 随机关注 (10% 概率)
+    if (arc4random() % 10 == 0) {
+      [self performFollow];
+      [NSThread sleepForTimeInterval:1.0];
+    }
+
     if (!self.config.isRunning)
       break;
 
-    // Swipe
+    // 滑动到下一个
     [self performHumanSwipe];
     [NSThread sleepForTimeInterval:[self randFloat:1.0 max:2.0]];
   }
 
-  [self log:@"[*] Automation Thread Stopped."];
+  [self log:@"[*] 自动化线程已停止。"];
 }
 
 @end

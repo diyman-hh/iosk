@@ -19,6 +19,7 @@ typedef struct {
 - (void)startAutomation;
 - (void)stopAutomation;
 - (BOOL)isRunning;
+- (void)performFollow; // Exposed for testing
 
 // Log callback for UI
 @property(nonatomic, copy) void (^logHandler)(NSString *log);

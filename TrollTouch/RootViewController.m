@@ -36,32 +36,32 @@
 
   UILabel *titleLabel =
       [[UILabel alloc] initWithFrame:CGRectMake(pad, y, w - 2 * pad, 30)];
-  titleLabel.text = @"Working Hours (0-24)";
+  titleLabel.text = @"工作时间 (0-24)";
   titleLabel.font = [UIFont boldSystemFontOfSize:16];
   [self.view addSubview:titleLabel];
   y += 35;
 
   self.startHourField =
-      [self createField:@"Start (e.g. 9)"
+      [self createField:@"开始 (如 9)"
                   frame:CGRectMake(pad, y, (w - 3 * pad) / 2, 40)];
   self.endHourField =
-      [self createField:@"End (e.g. 23)"
+      [self createField:@"结束 (如 23)"
                   frame:CGRectMake(pad + (w - 3 * pad) / 2 + pad, y,
                                    (w - 3 * pad) / 2, 40)];
   y += 50;
 
   UILabel *watchLabel =
       [[UILabel alloc] initWithFrame:CGRectMake(pad, y, w - 2 * pad, 30)];
-  watchLabel.text = @"Watch Duration (Secs)";
+  watchLabel.text = @"观看时长 (秒)";
   watchLabel.font = [UIFont boldSystemFontOfSize:16];
   [self.view addSubview:watchLabel];
   y += 35;
 
   self.minWatchField =
-      [self createField:@"Min (3)"
+      [self createField:@"最小 (3)"
                   frame:CGRectMake(pad, y, (w - 3 * pad) / 2, 40)];
   self.maxWatchField =
-      [self createField:@"Max (8)"
+      [self createField:@"最大 (8)"
                   frame:CGRectMake(pad + (w - 3 * pad) / 2 + pad, y,
                                    (w - 3 * pad) / 2, 40)];
   y += 60;
@@ -69,7 +69,7 @@
   self.toggleButton = [UIButton buttonWithType:UIButtonTypeSystem];
   self.toggleButton.frame = CGRectMake(pad, y, w - 2 * pad, 50);
   self.toggleButton.backgroundColor = [UIColor systemBlueColor];
-  [self.toggleButton setTitle:@"START AUTOMATION"
+  [self.toggleButton setTitle:@"开始运行 (5秒后启动)"
                      forState:UIControlStateNormal];
   [self.toggleButton setTitleColor:[UIColor whiteColor]
                           forState:UIControlStateNormal];
@@ -80,11 +80,23 @@
   [self.view addSubview:self.toggleButton];
   y += 60;
 
+  UIButton *testFollowButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  testFollowButton.frame = CGRectMake(pad, y, (w - 3 * pad) / 2, 50);
+  testFollowButton.backgroundColor = [UIColor systemOrangeColor];
+  [testFollowButton setTitle:@"测试: 寻找并关注" forState:UIControlStateNormal];
+  [testFollowButton setTitleColor:[UIColor whiteColor]
+                         forState:UIControlStateNormal];
+  testFollowButton.layer.cornerRadius = 8;
+  [testFollowButton addTarget:self
+                       action:@selector(testFollow)
+             forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:testFollowButton];
+
   UIButton *visButton = [UIButton buttonWithType:UIButtonTypeSystem];
-  visButton.frame = CGRectMake(pad, y, w - 2 * pad, 50);
+  visButton.frame =
+      CGRectMake(pad + (w - 3 * pad) / 2 + pad, y, (w - 3 * pad) / 2, 50);
   visButton.backgroundColor = [UIColor systemGreenColor];
-  [visButton setTitle:@"VISUALIZE POSITIONS (Save to Photos)"
-             forState:UIControlStateNormal];
+  [visButton setTitle:@"可视化坐标" forState:UIControlStateNormal];
   [visButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
   visButton.layer.cornerRadius = 8;
   [visButton addTarget:self
@@ -95,7 +107,7 @@
 
   UILabel *logLabel =
       [[UILabel alloc] initWithFrame:CGRectMake(pad, y, w - 2 * pad, 20)];
-  logLabel.text = @"Logs:";
+  logLabel.text = @"运行日志:";
   [self.view addSubview:logLabel];
   y += 25;
 
@@ -128,17 +140,28 @@
 
   if ([mgr isRunning]) {
     [mgr stopAutomation];
-    [self.toggleButton setTitle:@"START AUTOMATION"
+    [self.toggleButton setTitle:@"开始运行 (5秒后启动)"
                        forState:UIControlStateNormal];
     self.toggleButton.backgroundColor = [UIColor systemBlueColor];
   } else {
     [self saveSettings];
     [mgr startAutomation];
-    [self.toggleButton setTitle:@"STOP AUTOMATION"
-                       forState:UIControlStateNormal];
+    [self.toggleButton setTitle:@"停止运行" forState:UIControlStateNormal];
     self.toggleButton.backgroundColor = [UIColor systemRedColor];
   }
 }
+
+- (void)testFollow {
+  [self appendLog:@"[测试] 3秒后执行关注测试..."];
+  dispatch_after(
+      dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
+      dispatch_get_main_queue(), ^{
+        [[AutomationManager sharedManager] performFollow];
+      });
+}
+
+// ... saveSettings and loadSettings logic is mostly numeric, but UI labels
+// update ...
 
 - (void)saveSettings {
   NSUserDefaults *def = [NSUserDefaults standardUserDefaults];
@@ -158,7 +181,6 @@
 
 - (void)loadSettings {
   NSUserDefaults *def = [NSUserDefaults standardUserDefaults];
-  // Defaults
   if ([def objectForKey:@"startHour"] == nil) {
     self.startHourField.text = @"9";
     self.endHourField.text = @"23";
@@ -187,22 +209,21 @@
 }
 
 - (void)visualizePositions {
-  [self appendLog:@"[*] visualization..."];
-  [self appendLog:@"[*] 3 seconds delay... Open TikTok now!"];
+  [self appendLog:@"[*] 正在生成可视化坐标..."];
+  [self appendLog:@"[*] 3秒后截图... 请立即切换到 TikTok!"];
 
   dispatch_after(
       dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
       dispatch_get_main_queue(), ^{
         UIImage *screen = captureScreen();
         if (!screen) {
-          [self appendLog:@"[-] Screenshot failed."];
+          [self appendLog:@"[-] 截图失败。"];
           return;
         }
 
         UIImage *debugImg = drawDebugRects(screen);
         UIImageWriteToSavedPhotosAlbum(debugImg, nil, nil, nil);
-        [self appendLog:
-                  @"[+] Saved layout map to Camera Roll! Check Photos app."];
+        [self appendLog:@"[+] 坐标图已保存到相册! 请去相册查看。"];
       });
 }
 
