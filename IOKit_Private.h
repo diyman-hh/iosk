@@ -43,6 +43,12 @@ enum {
 // Field Indices for SetIntegerValue
 #define kIOHIDEventFieldDigitizerTouch ((kIOHIDEventTypeDigitizer << 16) | 3)
 #define kIOHIDEventFieldDigitizerRange ((kIOHIDEventTypeDigitizer << 16) | 4)
+#define kIOHIDEventFieldDigitizerIndex ((kIOHIDEventTypeDigitizer << 16) | 0)
+#define kIOHIDEventFieldDigitizerIdentity ((kIOHIDEventTypeDigitizer << 16) | 1)
+#define kIOHIDEventFieldDigitizerType ((kIOHIDEventTypeDigitizer << 16) | 9)
+
+// Digitizer Transducer Types
+#define kIOHIDDigitizerTransducerTypeFinger 0
 
 // --- Function Prototypes (Private) ---
 
