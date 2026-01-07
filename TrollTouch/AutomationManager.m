@@ -215,7 +215,52 @@ void signalHandler(int signal) {
   [_workerThread start];
 }
 
-// ... (skip lines)
+- (void)stopAutomation {
+  if (!self.config.isRunning)
+    return;
+
+  [self log:@"[*] 正在停止自动化服务..."];
+
+  if (_audioRecorder)
+    [_audioRecorder stop];
+  if (_bgTask != UIBackgroundTaskInvalid) {
+    [[UIApplication sharedApplication] endBackgroundTask:_bgTask];
+    _bgTask = UIBackgroundTaskInvalid;
+  }
+
+  [self sendNotification:@"TrollTouch" body:@"自动化服务已停止"];
+
+  TrollConfig newConfig = self.config;
+  newConfig.isRunning = NO;
+  self.config = newConfig;
+
+  [_workerThread cancel];
+  _workerThread = nil;
+}
+
+- (BOOL)isRunning {
+  return self.config.isRunning;
+}
+
+- (void)launchTikTok {
+  [self log:@"[*] 正在启动 TikTok..."];
+  void *handle = dlopen("/System/Library/PrivateFrameworks/"
+                        "SpringBoardServices.framework/SpringBoardServices",
+                        RTLD_LAZY);
+  if (!handle)
+    return;
+
+  SBSLaunchAppFunc SBSLaunchApplicationWithIdentifier =
+      (SBSLaunchAppFunc)dlsym(handle, "SBSLaunchApplicationWithIdentifier");
+  if (SBSLaunchApplicationWithIdentifier) {
+    SBSLaunchApplicationWithIdentifier((__bridge CFStringRef)TIKTOK_GLOBAL,
+                                       false);
+    [NSThread sleepForTimeInterval:1.0];
+    SBSLaunchApplicationWithIdentifier((__bridge CFStringRef)TIKTOK_CHINA,
+                                       false);
+  }
+  dlclose(handle);
+}
 
 - (void)performLike {
   [self log:@"[*] 执行点赞 (坐标: 0.50, 0.50)"];
