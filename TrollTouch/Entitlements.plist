@@ -2,19 +2,26 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Critical: Allows access to IOHIDEventSystem -->
-    <key>com.apple.private.hid.client.event-dispatch</key>
-    <true/>
-    <key>com.apple.private.hid.manager.client</key>
-    <true/>
-
-    <!-- Critical: Bypass Sandbox (act as Root) -->
-    <key>com.apple.private.security.no-container</key>
-    <true/>
     <key>platform-application</key>
     <true/>
-
-    <!-- Allows launching other apps (SpringBoardServices) -->
+    <key>com.apple.private.security.no-container</key>
+    <true/>
+    <key>com.apple.private.security.storage.AppDataContainers</key>
+    <true/>
+    <key>com.apple.security.app-sandbox</key>
+    <false/>
+    
+    <!-- HID / Touch Simulation Access -->
+    <key>com.apple.private.hid.manager.client</key>
+    <true/>
+    <key>com.apple.private.hid.client.event-dispatch</key>
+    <true/>
+    <key>com.apple.private.hid.client.event-filter</key>
+    <true/>
+    
+    <!-- SpringBoard / BackBoard Access -->
+    <key>com.apple.backboard.client</key>
+    <true/>
     <key>com.apple.springboard.launchapplications</key>
     <true/>
     

@@ -23,7 +23,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
     shared = [[AutomationManager alloc] init];
-    shared.config = (TrollConfig){.startHour = 9,
+    shared.config = (TrollConfig){.startHour = 5,
                                   .endHour = 23,
                                   .minWatchSec = 3,
                                   .maxWatchSec = 8,

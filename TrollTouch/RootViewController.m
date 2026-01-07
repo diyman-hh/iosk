@@ -232,7 +232,7 @@
 - (void)loadSettings {
   NSUserDefaults *def = [NSUserDefaults standardUserDefaults];
   if ([def objectForKey:@"startHour"] == nil) {
-    self.startHourField.text = @"9";
+    self.startHourField.text = @"5";
     self.endHourField.text = @"23";
     self.minWatchField.text = @"3";
     self.maxWatchField.text = @"8";
