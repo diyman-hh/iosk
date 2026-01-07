@@ -151,65 +151,70 @@ void signalHandler(int signal) {
        withCompletionHandler:nil];
 }
 
-- (void)setupPiPWindow {
+- (void)setupTransparentForeground {
   if (_overlayWindow)
     return;
 
   dispatch_async(dispatch_get_main_queue(), ^{
     CGRect screenBounds = [[UIScreen mainScreen] bounds];
 
-    // Create small PiP window in bottom-right corner
-    CGFloat pipWidth = 80;
-    CGFloat pipHeight = 120;
-    CGFloat margin = 10;
-    CGRect pipFrame =
-        CGRectMake(screenBounds.size.width - pipWidth - margin,
-                   screenBounds.size.height - pipHeight - margin - 50, pipWidth,
-                   pipHeight);
+    // Create fullscreen transparent window
+    self->_overlayWindow = [[UIWindow alloc] initWithFrame:screenBounds];
+    self->_overlayWindow.windowLevel = UIWindowLevelNormal;
+    self->_overlayWindow.backgroundColor = [UIColor clearColor];
+    self->_overlayWindow.opaque = NO;
 
-    self->_overlayWindow = [[UIWindow alloc] initWithFrame:pipFrame];
-    self->_overlayWindow.windowLevel = UIWindowLevelAlert + 1;
-    self->_overlayWindow.backgroundColor = [UIColor colorWithWhite:0.1
-                                                             alpha:0.85];
-    self->_overlayWindow.layer.cornerRadius = 12;
-    self->_overlayWindow.layer.borderWidth = 2;
-    self->_overlayWindow.layer.borderColor =
+    // CRITICAL: Allow touches to pass through
+    self->_overlayWindow.userInteractionEnabled = NO;
+
+    // Create a small control panel in top-right corner
+    CGFloat panelWidth = 100;
+    CGFloat panelHeight = 80;
+    UIView *controlPanel = [[UIView alloc]
+        initWithFrame:CGRectMake(screenBounds.size.width - panelWidth - 10, 30,
+                                 panelWidth, panelHeight)];
+    controlPanel.backgroundColor = [UIColor colorWithWhite:0.1 alpha:0.7];
+    controlPanel.layer.cornerRadius = 12;
+    controlPanel.layer.borderWidth = 2;
+    controlPanel.layer.borderColor =
         [UIColor colorWithRed:0 green:1 blue:0 alpha:0.8].CGColor;
-    self->_overlayWindow.clipsToBounds = YES;
+    controlPanel.userInteractionEnabled =
+        YES; // Control panel can receive touches
 
-    // Status indicator
+    // Status icon
     UILabel *statusIcon =
-        [[UILabel alloc] initWithFrame:CGRectMake(0, 10, pipWidth, 30)];
-    statusIcon.text = @"🤖";
-    statusIcon.font = [UIFont systemFontOfSize:24];
+        [[UILabel alloc] initWithFrame:CGRectMake(0, 5, panelWidth, 30)];
+    statusIcon.text = @"🤖 运行中";
+    statusIcon.font = [UIFont boldSystemFontOfSize:14];
+    statusIcon.textColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
     statusIcon.textAlignment = NSTextAlignmentCenter;
-    [self->_overlayWindow addSubview:statusIcon];
-
-    // Status text
-    UILabel *statusLabel =
-        [[UILabel alloc] initWithFrame:CGRectMake(5, 45, pipWidth - 10, 40)];
-    statusLabel.text = @"运行中";
-    statusLabel.font = [UIFont boldSystemFontOfSize:12];
-    statusLabel.textColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:1];
-    statusLabel.textAlignment = NSTextAlignmentCenter;
-    statusLabel.numberOfLines = 2;
-    statusLabel.tag = 1000;
-    [self->_overlayWindow addSubview:statusLabel];
+    [controlPanel addSubview:statusIcon];
 
     // Counter label
     UILabel *counterLabel =
-        [[UILabel alloc] initWithFrame:CGRectMake(5, 85, pipWidth - 10, 30)];
-    counterLabel.text = @"0 操作";
+        [[UILabel alloc] initWithFrame:CGRectMake(5, 40, panelWidth - 10, 35)];
+    counterLabel.text = @"0 操作\n前台模式";
     counterLabel.font = [UIFont systemFontOfSize:10];
     counterLabel.textColor = [UIColor whiteColor];
     counterLabel.textAlignment = NSTextAlignmentCenter;
+    counterLabel.numberOfLines = 2;
     counterLabel.tag = 1001;
-    [self->_overlayWindow addSubview:counterLabel];
+    [controlPanel addSubview:counterLabel];
+
+    [self->_overlayWindow addSubview:controlPanel];
+
+    // Add semi-transparent background hint (very subtle)
+    UIView *hintView = [[UIView alloc] initWithFrame:screenBounds];
+    hintView.backgroundColor =
+        [UIColor colorWithWhite:0 alpha:0.02]; // Almost invisible
+    hintView.userInteractionEnabled = NO;
+    [self->_overlayWindow insertSubview:hintView atIndex:0];
 
     self->_overlayWindow.hidden = NO;
     [self->_overlayWindow makeKeyAndVisible];
 
-    [self log:@"[系统] PiP 控制窗口已创建"];
+    [self log:@"[系统] 前台透明模式已启动 - TrollTouch 保持前台"];
+    [self log:@"[提示] 你现在可以看到并操作 TikTok，触摸会穿透到 TikTok"];
   });
 }
 
@@ -220,7 +225,7 @@ void signalHandler(int signal) {
   dispatch_async(dispatch_get_main_queue(), ^{
     self->_overlayWindow.hidden = YES;
     self->_overlayWindow = nil;
-    [self log:@"[系统] PiP 窗口已移除"];
+    [self log:@"[系统] 前台透明模式已停止"];
   });
 }
 
@@ -265,8 +270,8 @@ void signalHandler(int signal) {
 
   [self setupNotifications];
   [self setupBackgrounds];
-  [self setupPiPWindow]; // Small floating control panel
-  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (PiP模式)"];
+  [self setupTransparentForeground]; // Fullscreen transparent foreground mode
+  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (前台透明模式)"];
 
   self.config = (TrollConfig){.startHour = self.config.startHour,
                               .endHour = self.config.endHour,
