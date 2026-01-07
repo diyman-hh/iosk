@@ -11,8 +11,11 @@
 #define TIKTOK_CHINA @"com.ss.iphone.ugc.Aweme"
 typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
+#import <AVFoundation/AVFoundation.h>
+
 @implementation AutomationManager {
   NSThread *_workerThread;
+  AVAudioPlayer *_silentPlayer;
 }
 
 + (instancetype)sharedManager {
@@ -46,9 +49,35 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   }
 }
 
+- (void)setupBackgroundAudio {
+  NSError *err = nil;
+  [[AVAudioSession sharedInstance]
+      setCategory:AVAudioSessionCategoryPlayback
+      withOptions:AVAudioSessionCategoryOptionMixWithOthers
+            error:&err];
+  [[AVAudioSession sharedInstance] setActive:YES error:&err];
+
+  if (!_silentPlayer) {
+    // Generate 1 sec of silence
+    NSMutableData *data =
+        [NSMutableData dataWithLength:44100 * 2]; // 1s 16bit mono
+    _silentPlayer = [[AVAudioPlayer alloc] initWithData:data
+                                           fileTypeHint:AVFileTypeWAVE
+                                                  error:&err];
+    _silentPlayer.numberOfLoops = -1; // Infinite
+    _silentPlayer.volume = 0.0;
+    [_silentPlayer prepareToPlay];
+  }
+  [_silentPlayer play];
+  [self log:@"[系统] 后台保活服务(音频) 已启动"];
+}
+
 - (void)startAutomation {
   if (self.config.isRunning)
     return;
+
+  // 启动后台保活
+  [self setupBackgroundAudio];
 
   self.config = (TrollConfig){.startHour = self.config.startHour,
                               .endHour = self.config.endHour,
@@ -70,6 +99,11 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
     return;
 
   [self log:@"[*] 正在停止自动化服务..."];
+
+  // 停止音频
+  if (_silentPlayer) {
+    [_silentPlayer stop];
+  }
 
   TrollConfig newConfig = self.config;
   newConfig.isRunning = NO;
