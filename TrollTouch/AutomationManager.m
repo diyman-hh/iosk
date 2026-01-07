@@ -23,37 +23,43 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   UIBackgroundTaskIdentifier _bgTask;
 }
 
+// Log Path Helper - Public Downloads for easy access via Files app / 3uTools
+NSString *getLogDirectory() {
+  NSString *path = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
+  NSFileManager *fm = [NSFileManager defaultManager];
+  if (![fm fileExistsAtPath:path]) {
+    [fm createDirectoryAtPath:path
+        withIntermediateDirectories:YES
+                         attributes:nil
+                              error:nil];
+  }
+  return path;
+}
+
 // Crash & Log Handling
 void uncaughtExceptionHandler(NSException *exception) {
   NSString *logPath =
-      [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/crash.log"];
+      [getLogDirectory() stringByAppendingPathComponent:@"crash.log"];
   NSString *content = [NSString
       stringWithFormat:@"CRASH EXCEPTION: %@\nReason: %@\nStack: %@\n\n",
                        exception.name, exception.reason,
                        exception.callStackSymbols];
 
-  NSFileHandle *file = [NSFileHandle fileHandleForWritingAtPath:logPath];
-  if (file) {
-    [file seekToEndOfFile];
-    [file writeData:[content dataUsingEncoding:NSUTF8StringEncoding]];
-    [file closeFile];
-  } else {
-    [content writeToFile:logPath
-              atomically:YES
-                encoding:NSUTF8StringEncoding
-                   error:nil];
+  // Append to file
+  FILE *f = fopen([logPath UTF8String], "a");
+  if (f) {
+    fprintf(f, "%s", [content UTF8String]);
+    fclose(f);
   }
 }
 
 void signalHandler(int signal) {
   NSString *logPath =
-      [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/crash.log"];
+      [getLogDirectory() stringByAppendingPathComponent:@"crash.log"];
   NSString *content =
       [NSString stringWithFormat:@"CRASH SIGNAL: %d\nStack: %@\n\n", signal,
                                  [NSThread callStackSymbols]];
 
-  // Low-level write to avoid objc allocations if possible, but for now simple
-  // NSFileHandle
   FILE *f = fopen([logPath UTF8String], "a");
   if (f) {
     fprintf(f, "%s", [content UTF8String]);
@@ -66,6 +72,9 @@ void signalHandler(int signal) {
   static AutomationManager *shared = nil;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
+    // Ensure log dir exists
+    getLogDirectory();
+
     // Setup Global Logging
     NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
     signal(SIGSEGV, signalHandler);
@@ -93,9 +102,9 @@ void signalHandler(int signal) {
   // Console
   printf("%s\n", [msg UTF8String]);
 
-  // Persistent File Log
+  // Persistent File Log (Public)
   NSString *logPath =
-      [NSHomeDirectory() stringByAppendingPathComponent:@"Documents/app.log"];
+      [getLogDirectory() stringByAppendingPathComponent:@"app.log"];
   NSString *tsMsg =
       [NSString stringWithFormat:@"[%@] %@\n", [NSDate date], msg];
 
@@ -109,9 +118,6 @@ void signalHandler(int signal) {
   if (self.logHandler) {
     dispatch_async(dispatch_get_main_queue(), ^{
       self.logHandler(msg);
-      self.logHandler([NSString
-          stringWithFormat:@"(Log saved to %@)",
-                           logPath]); // Show path once maybe? No, spammy.
     });
   }
 }

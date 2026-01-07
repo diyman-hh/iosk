@@ -151,22 +151,26 @@
   self.logView.font = [UIFont fontWithName:@"Courier" size:10];
   [self.view addSubview:self.logView];
 
-  // Load previous logs
-  NSString *docPath = [NSSearchPathForDirectoriesInDomains(
-      NSDocumentDirectory, NSUserDomainMask, YES) lastObject];
+  // Load previous logs from Public Downloads
+  NSString *docPath = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
   NSString *crashPath = [docPath stringByAppendingPathComponent:@"crash.log"];
   NSString *appLogPath = [docPath stringByAppendingPathComponent:@"app.log"];
 
   NSMutableString *history = [NSMutableString string];
 
   if ([[NSFileManager defaultManager] fileExistsAtPath:crashPath]) {
-    NSString *crashLog = [NSString stringWithContentsOfFile:crashPath
-                                                   encoding:NSUTF8StringEncoding
-                                                      error:nil];
+    // Limit crash log size reading
+    NSFileHandle *file = [NSFileHandle fileHandleForReadingAtPath:crashPath];
+    unsigned long long fileSize = [file seekToEndOfFile];
+    unsigned long long offset = (fileSize > 4096) ? fileSize - 4096 : 0;
+    [file seekToFileOffset:offset];
+    NSData *data = [file readDataToEndOfFile];
+    NSString *crashLog = [[NSString alloc] initWithData:data
+                                               encoding:NSUTF8StringEncoding];
     [history appendFormat:@"[CRASH LOG DETECTED]\n%@\n\n", crashLog];
   }
 
-  // Read last 2KB of app log to avoid huge text
+  // Read last 2KB of app log
   if ([[NSFileManager defaultManager] fileExistsAtPath:appLogPath]) {
     NSFileHandle *file = [NSFileHandle fileHandleForReadingAtPath:appLogPath];
     unsigned long long fileSize = [file seekToEndOfFile];
@@ -181,7 +185,8 @@
   if (history.length > 0) {
     _logView.text = history;
   } else {
-    _logView.text = @"日志输出区域...\n";
+    _logView.text =
+        [NSString stringWithFormat:@"日志将保存在:\n%@\n等待输出...", docPath];
   }
 
   // Tap to dismiss keyboard
