@@ -137,26 +137,6 @@
   [self.view addSubview:visButton];
   y += 60;
 
-  // Overlay transparency slider
-  UILabel *alphaLabel =
-      [[UILabel alloc] initWithFrame:CGRectMake(pad, y, w - 2 * pad, 20)];
-  alphaLabel.text = @"覆盖窗口透明度: 0.80";
-  alphaLabel.font = [UIFont systemFontOfSize:12];
-  alphaLabel.tag = 2000; // For updating
-  [self.view addSubview:alphaLabel];
-  y += 25;
-
-  UISlider *alphaSlider =
-      [[UISlider alloc] initWithFrame:CGRectMake(pad, y, w - 2 * pad, 30)];
-  alphaSlider.minimumValue = 0.0;
-  alphaSlider.maximumValue = 1.0;
-  alphaSlider.value = 0.8;
-  [alphaSlider addTarget:self
-                  action:@selector(alphaSliderChanged:)
-        forControlEvents:UIControlEventValueChanged];
-  [self.view addSubview:alphaSlider];
-  y += 40;
-
   UILabel *logLabel =
       [[UILabel alloc] initWithFrame:CGRectMake(pad, y, w - 2 * pad, 20)];
   logLabel.text = @"运行日志:";
@@ -275,15 +255,6 @@
       dispatch_get_main_queue(), ^{
         [[AutomationManager sharedManager] performHumanSwipe];
       });
-}
-
-- (void)alphaSliderChanged:(UISlider *)slider {
-  UILabel *label = (UILabel *)[self.view viewWithTag:2000];
-  if (label) {
-    label.text =
-        [NSString stringWithFormat:@"覆盖窗口透明度: %.2f", slider.value];
-  }
-  [[AutomationManager sharedManager] updateOverlayAlpha:slider.value];
 }
 
 - (void)visualizePositions {
