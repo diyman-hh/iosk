@@ -383,7 +383,8 @@ void signalHandler(int signal) {
       continue;
     }
 
-    // --- 状态检测 ---
+    // --- 状态检测 (已禁用截图以防止后台崩溃) ---
+    /*
     UIImage *screen = captureScreen();
     if (screen) {
       BOOL isFeed = isVideoFeed(screen);
@@ -393,6 +394,7 @@ void signalHandler(int signal) {
         // perform_touch(0.08, 0.93);
       }
     }
+    */
 
     count++;
     [self log:@"\n--- 视频 #%d ---", count];
@@ -403,7 +405,8 @@ void signalHandler(int signal) {
       continue;
     }
 
-    // --- OCR 查房 (每15个视频) ---
+    /*
+    // --- OCR 查房 (每15个视频) - 已禁用
     if (count % 15 == 0) {
       [self log:@"[*] 检查个人主页数据 (OCR)..."];
       // 左滑进入主页
@@ -426,6 +429,7 @@ void signalHandler(int signal) {
       [NSThread sleepForTimeInterval:2.0];
       perform_swipe(0.2, 0.5, 0.8, 0.5, 0.3);
     }
+    */
 
     // 随机观看时长
     int interval = self.config.maxWatchSec - self.config.minWatchSec;
