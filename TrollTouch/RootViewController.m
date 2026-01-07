@@ -353,23 +353,4 @@
   [self.logView scrollRangeToVisible:NSMakeRange(self.logView.text.length, 1)];
 }
 
-- (void)visualizePositions {
-  [self appendLog:@"[*] 正在生成可视化坐标..."];
-  [self appendLog:@"[*] 3秒后截图... 请立即切换到 TikTok!"];
-
-  dispatch_after(
-      dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
-      dispatch_get_main_queue(), ^{
-        UIImage *screen = captureScreen();
-        if (!screen) {
-          [self appendLog:@"[-] 截图失败。"];
-          return;
-        }
-
-        UIImage *debugImg = drawDebugRects(screen);
-        UIImageWriteToSavedPhotosAlbum(debugImg, nil, nil, nil);
-        [self appendLog:@"[+] 坐标图已保存到相册! 请去相册查看。"];
-      });
-}
-
 @end
