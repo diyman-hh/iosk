@@ -11,6 +11,7 @@ TrollTouch_FILES = \
 	TrollTouch/AppDelegate.m \
 	TrollTouch/RootViewController.m \
 	TrollTouch/AutomationManager.m \
+	TrollTouch/BackboardTouchInjector.m \
 	TrollTouch/ScreenCapture.m \
 	TrollTouch/VisionHelper.m \
 	TouchSimulator.c

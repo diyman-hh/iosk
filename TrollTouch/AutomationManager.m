@@ -1,4 +1,5 @@
 #import "AutomationManager.h"
+#import "BackboardTouchInjector.h"
 #import "ScreenCapture.h"
 #import "TouchSimulator.h"
 #import "VisionHelper.h"
@@ -270,8 +271,19 @@ void signalHandler(int signal) {
 
   [self setupNotifications];
   [self setupBackgrounds];
+
+  // Initialize BackboardServices touch injector
+  [self log:@"[系统] 初始化 BackboardServices 触摸注入..."];
+  BOOL bbInitialized = [[BackboardTouchInjector sharedInjector] initialize];
+  if (bbInitialized) {
+    [self log:@"[系统] ✅ BackboardServices 初始化成功 - 可以跨应用控制！"];
+  } else {
+    [self log:@"[系统] ⚠️ BackboardServices 初始化失败 - 将使用备用方法"];
+  }
+
   [self setupTransparentForeground]; // Fullscreen transparent foreground mode
-  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (前台透明模式)"];
+  [self sendNotification:@"TrollTouch"
+                    body:@"自动化服务已启动 (BackboardServices模式)"];
 
   self.config = (TrollConfig){.startHour = self.config.startHour,
                               .endHour = self.config.endHour,
@@ -347,9 +359,11 @@ void signalHandler(int signal) {
 - (void)performLike {
   [self log:@"[*] 执行点赞 (坐标: 0.50, 0.50)"];
   [self setupBackgrounds];
-  perform_touch(0.5, 0.5);
+
+  // Use BackboardTouchInjector for cross-app touch
+  [[BackboardTouchInjector sharedInjector] tapAtX:0.5 y:0.5];
   [NSThread sleepForTimeInterval:0.1];
-  perform_touch(0.5, 0.5);
+  [[BackboardTouchInjector sharedInjector] tapAtX:0.5 y:0.5];
 }
 
 // 关注操作逻辑
@@ -364,18 +378,23 @@ void signalHandler(int signal) {
 }
 
 - (void)performHumanSwipe {
+  float jitter = self.config.swipeJitter;
+  float x1 = 0.5 + ((int)arc4random_uniform(10) - 5) * jitter / 5.0;
+  float y1 = 0.8 + ((int)arc4random_uniform(10) - 5) * jitter / 5.0;
+  float x2 = 0.5 + ((int)arc4random_uniform(10) - 5) * jitter / 5.0;
+  float y2 = 0.2 + ((int)arc4random_uniform(10) - 5) * jitter / 5.0;
+  float dur = 0.25 + (arc4random_uniform(10) / 100.0);
+
+  [self log:@"[*] 执行滑动: (%.2f, %.2f) -> (%.2f, %.2f) 时长: %.1fs", x1, y1,
+            x2, y2, dur];
   [self setupBackgrounds];
 
-  // Cast to int to prevent unsigned underflow when subtracting
-  float startX = 0.5f + ((int)arc4random_uniform(20) - 10) / 100.0f;
-  float startY = 0.8f + ((int)arc4random_uniform(10) - 5) / 100.0f;
-
-  float endX = startX + ((int)arc4random_uniform(10) - 5) / 100.0f;
-  float endY = 0.2f + ((int)arc4random_uniform(10) - 5) / 100.0f;
-
-  [self log:@"[*] 执行滑动: (%.2f, %.2f) -> (%.2f, %.2f) 时长: 0.3s", startX,
-            startY, endX, endY];
-  perform_swipe(startX, startY, endX, endY, 0.3);
+  // Use BackboardTouchInjector for cross-app swipe
+  [[BackboardTouchInjector sharedInjector] swipeFromX:x1
+                                                    y:y1
+                                                  toX:x2
+                                                    y:y2
+                                             duration:dur];
 }
 
 - (BOOL)isWorkingHour {
