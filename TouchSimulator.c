@@ -3,9 +3,14 @@
 //  TrollTouch
 //
 
+#include "TouchSimulator.h"
 #include "IOKit_Private.h"
+#include <CoreFoundation/CoreFoundation.h>
+#include <mach/mach_time.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <unistd.h> // for usleep
+
 
 // Global client reference
 static IOHIDEventSystemClientRef ioSystemClient = NULL;
