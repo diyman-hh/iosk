@@ -83,7 +83,7 @@
   UIButton *testFollowButton = [UIButton buttonWithType:UIButtonTypeSystem];
   testFollowButton.frame = CGRectMake(pad, y, (w - 3 * pad) / 2, 50);
   testFollowButton.backgroundColor = [UIColor systemOrangeColor];
-  [testFollowButton setTitle:@"测试: 寻找并关注" forState:UIControlStateNormal];
+  [testFollowButton setTitle:@"测试: 关注" forState:UIControlStateNormal];
   [testFollowButton setTitleColor:[UIColor whiteColor]
                          forState:UIControlStateNormal];
   testFollowButton.layer.cornerRadius = 8;
@@ -92,12 +92,44 @@
              forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:testFollowButton];
 
-  UIButton *visButton = [UIButton buttonWithType:UIButtonTypeSystem];
-  visButton.frame =
+  UIButton *testLikeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  testLikeButton.frame =
       CGRectMake(pad + (w - 3 * pad) / 2 + pad, y, (w - 3 * pad) / 2, 50);
+  testLikeButton.backgroundColor = [UIColor systemOrangeColor];
+  [testLikeButton setTitle:@"测试: 点赞" forState:UIControlStateNormal];
+  [testLikeButton setTitleColor:[UIColor whiteColor]
+                       forState:UIControlStateNormal];
+  testLikeButton.layer.cornerRadius = 8;
+  [testLikeButton addTarget:self
+                     action:@selector(testLike)
+           forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:testLikeButton];
+  y += 60;
+
+  UIButton *testSwipeButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  testSwipeButton.frame = CGRectMake(pad, y, w - 2 * pad, 50);
+  testSwipeButton.backgroundColor = [UIColor systemOrangeColor];
+  [testSwipeButton setTitle:@"测试: 下一个视频 (滑动)"
+                   forState:UIControlStateNormal];
+  [testSwipeButton setTitleColor:[UIColor whiteColor]
+                        forState:UIControlStateNormal];
+  testSwipeButton.layer.cornerRadius = 8;
+  [testSwipeButton addTarget:self
+                      action:@selector(testSwipe)
+            forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:testSwipeButton];
+  y += 60;
+
+  UIButton *visButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  visButton.frame = CGRectMake(pad, y, w - 2 * pad, 50);
   visButton.backgroundColor = [UIColor systemGreenColor];
-  [visButton setTitle:@"可视化坐标" forState:UIControlStateNormal];
+  [visButton setTitle:@"可视化坐标 (保存到相册)" forState:UIControlStateNormal];
   [visButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+  visButton.layer.cornerRadius = 8;
+  [visButton addTarget:self
+                action:@selector(visualizePositions)
+      forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:visButton];
   visButton.layer.cornerRadius = 8;
   [visButton addTarget:self
                 action:@selector(visualizePositions)
@@ -157,6 +189,24 @@
       dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
       dispatch_get_main_queue(), ^{
         [[AutomationManager sharedManager] performFollow];
+      });
+}
+
+- (void)testLike {
+  [self appendLog:@"[测试] 3秒后执行点赞测试..."];
+  dispatch_after(
+      dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
+      dispatch_get_main_queue(), ^{
+        [[AutomationManager sharedManager] performLike];
+      });
+}
+
+- (void)testSwipe {
+  [self appendLog:@"[测试] 3秒后执行滑动测试..."];
+  dispatch_after(
+      dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
+      dispatch_get_main_queue(), ^{
+        [[AutomationManager sharedManager] performHumanSwipe];
       });
 }
 
