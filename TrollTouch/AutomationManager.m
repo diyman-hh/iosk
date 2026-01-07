@@ -5,6 +5,7 @@
 #import <AVFoundation/AVFoundation.h>
 #import <CoreLocation/CoreLocation.h>
 #import <UIKit/UIKit.h>
+#import <UserNotifications/UserNotifications.h>
 #import <dlfcn.h> // Required for dlopen, dlsym, RTLD_LAZY
 #import <objc/runtime.h>
 #import <sys/utsname.h>
@@ -16,8 +17,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
 @implementation AutomationManager {
   NSThread *_workerThread;
-  AVAudioPlayer *_silentPlayer;
-  UIWindow *_floatingWindow;
+  AVAudioRecorder *_audioRecorder;
   UIBackgroundTaskIdentifier _bgTask;
 }
 
@@ -297,8 +297,6 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
   int count = 0;
   while (self.config.isRunning && ![[NSThread currentThread] isCancelled]) {
-    // Heartbeat
-    [self updateFloatingWindowHeartbeat];
 
     NSDate *now = [NSDate date];
     NSCalendar *calendar = [NSCalendar currentCalendar];
@@ -308,6 +306,9 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
     if (hour < self.config.startHour || hour >= self.config.endHour) {
       [self log:@"[休息中] 当前 %ld点 (工作时间: %d-%d)", (long)hour,
                 self.config.startHour, self.config.endHour];
+      [self sendNotification:@"TrollTouch"
+                        body:[NSString stringWithFormat:@"[休息中] 当前 %ld点",
+                                                        (long)hour]];
       [NSThread sleepForTimeInterval:60.0];
       continue;
     }
