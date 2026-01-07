@@ -72,10 +72,14 @@ void signalHandler(int signal) {
   static AutomationManager *shared = nil;
   static dispatch_once_t onceToken;
   dispatch_once(&onceToken, ^{
-    // Ensure log dir exists
-    getLogDirectory();
-
     // Setup Global Logging
+    NSString *logDir = getLogDirectory();
+    NSString *logPath = [logDir stringByAppendingPathComponent:@"app.log"];
+
+    // Redirect stdout/stderr to log file so we capture printf from C files too
+    freopen([logPath UTF8String], "a+", stdout);
+    freopen([logPath UTF8String], "a+", stderr);
+
     NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
     signal(SIGSEGV, signalHandler);
     signal(SIGABRT, signalHandler);
@@ -99,20 +103,10 @@ void signalHandler(int signal) {
   NSString *msg = [[NSString alloc] initWithFormat:format arguments:args];
   va_end(args);
 
-  // Console
-  printf("%s\n", [msg UTF8String]);
-
-  // Persistent File Log (Public)
-  NSString *logPath =
-      [getLogDirectory() stringByAppendingPathComponent:@"app.log"];
-  NSString *tsMsg =
-      [NSString stringWithFormat:@"[%@] %@\n", [NSDate date], msg];
-
-  FILE *f = fopen([logPath UTF8String], "a");
-  if (f) {
-    fprintf(f, "%s", [tsMsg UTF8String]);
-    fclose(f);
-  }
+  // Print to stdout (which is now redirected to file)
+  NSString *tsMsg = [NSString stringWithFormat:@"[%@] %@", [NSDate date], msg];
+  printf("%s\n", [tsMsg UTF8String]);
+  fflush(stdout); // Ensure immediate write
 
   // UI Callback
   if (self.logHandler) {
@@ -208,68 +202,24 @@ void signalHandler(int signal) {
 
   [self log:@"[*] 自动化服务已启动..."];
 
+  CGRect screenRect = [UIScreen mainScreen].bounds;
+  CGFloat scale = [UIScreen mainScreen].scale;
+  [self
+      log:@"[设备信息] 屏幕尺寸: %.0fx%.0f (Scale: %.1f) - 实际像素: %.0fx%.0f",
+          screenRect.size.width, screenRect.size.height, scale,
+          screenRect.size.width * scale, screenRect.size.height * scale];
+
   _workerThread = [[NSThread alloc] initWithTarget:self
                                           selector:@selector(automationLoop)
                                             object:nil];
   [_workerThread start];
 }
 
-- (void)stopAutomation {
-  if (!self.config.isRunning)
-    return;
-
-  [self log:@"[*] 正在停止自动化服务..."];
-
-  if (_audioRecorder)
-    [_audioRecorder stop];
-  if (_bgTask != UIBackgroundTaskInvalid) {
-    [[UIApplication sharedApplication] endBackgroundTask:_bgTask];
-    _bgTask = UIBackgroundTaskInvalid;
-  }
-
-  [self sendNotification:@"TrollTouch" body:@"自动化服务已停止"];
-
-  TrollConfig newConfig = self.config;
-  newConfig.isRunning = NO;
-  self.config = newConfig;
-
-  [_workerThread cancel];
-  _workerThread = nil;
-}
-
-- (BOOL)isRunning {
-  return self.config.isRunning;
-}
-
-// --- 逻辑 ---
-
-- (void)launchTikTok {
-  [self log:@"[*] 正在启动 TikTok..."];
-  void *handle = dlopen("/System/Library/PrivateFrameworks/"
-                        "SpringBoardServices.framework/SpringBoardServices",
-                        RTLD_LAZY);
-  if (!handle)
-    return;
-
-  SBSLaunchAppFunc SBSLaunchApplicationWithIdentifier =
-      (SBSLaunchAppFunc)dlsym(handle, "SBSLaunchApplicationWithIdentifier");
-  if (SBSLaunchApplicationWithIdentifier) {
-    SBSLaunchApplicationWithIdentifier((__bridge CFStringRef)TIKTOK_GLOBAL,
-                                       false);
-    [NSThread sleepForTimeInterval:1.0];
-    SBSLaunchApplicationWithIdentifier((__bridge CFStringRef)TIKTOK_CHINA,
-                                       false);
-  }
-  dlclose(handle);
-}
+// ... (skip lines)
 
 - (void)performLike {
-  [self log:@"[*] 执行点赞 (双击)"];
-  perform_touch(0.5, 0.5);
-  usleep(100000);
-  [self setupBackgrounds]; // 保活测试用
-  [self log:@"执行点赞操作..."];
-  // Double tap center
+  [self log:@"[*] 执行点赞 (坐标: 0.50, 0.50)"];
+  [self setupBackgrounds];
   perform_touch(0.5, 0.5);
   [NSThread sleepForTimeInterval:0.1];
   perform_touch(0.5, 0.5);
@@ -277,11 +227,9 @@ void signalHandler(int signal) {
 
 // 关注操作逻辑
 - (void)performFollow {
-  [self setupBackgrounds]; // 保活测试用
-  [self log:@"执行关注操作..."];
+  [self log:@"[*] 执行关注 (坐标: 0.93, 0.36)"];
+  [self setupBackgrounds];
   perform_touch(0.93, 0.36);
-  // 截图验证 (可选，防止过于卡顿)
-  // captureScreen();
 }
 
 - (float)randFloat:(float)min max:(float)max {
@@ -289,15 +237,16 @@ void signalHandler(int signal) {
 }
 
 - (void)performHumanSwipe {
-  [self setupBackgrounds]; // 保活测试用
-  [self log:@"执行上滑操作..."];
+  [self setupBackgrounds];
 
   float startX = 0.5 + ((arc4random_uniform(20) - 10) / 100.0); // 0.40 - 0.60
   float startY = 0.8 + ((arc4random_uniform(10) - 5) / 100.0);  // 0.75 - 0.85
   float endX = startX + ((arc4random_uniform(10) - 5) / 100.0); // Slight drift
   float endY = 0.2 + ((arc4random_uniform(10) - 5) / 100.0);    // 0.15 - 0.25
 
-  perform_swipe(startX, startY, endX, endY, 0.3); // Fast swipe
+  [self log:@"[*] 执行滑动: (%.2f, %.2f) -> (%.2f, %.2f) 时长: 0.3s", startX,
+            startY, endX, endY];
+  perform_swipe(startX, startY, endX, endY, 0.3);
 }
 
 - (BOOL)isWorkingHour {
