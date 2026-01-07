@@ -124,6 +124,12 @@ void perform_swipe(float x1, float y1, float x2, float y2, float duration_sec) {
   // 3. Up
   send_digitizer_event(x2, y2, 3);
   printf("[TouchSim] Swipe End\n");
+
+  // Force reset client after complex gesture to prevent stalls
+  if (ioSystemClient) {
+    CFRelease(ioSystemClient);
+    ioSystemClient = NULL;
+  }
 }
 
 // Main helper removed to avoid conflict with main.m

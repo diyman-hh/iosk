@@ -33,8 +33,12 @@
         <string>audio</string>
         <string>fetch</string>
     </array>
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
     <key>UISupportedInterfaceOrientations</key>
-	<array>
+    <array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 </dict>

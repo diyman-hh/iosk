@@ -151,6 +151,39 @@
   self.logView.font = [UIFont fontWithName:@"Courier" size:10];
   [self.view addSubview:self.logView];
 
+  // Load previous logs
+  NSString *docPath = [NSSearchPathForDirectoriesInDomains(
+      NSDocumentDirectory, NSUserDomainMask, YES) lastObject];
+  NSString *crashPath = [docPath stringByAppendingPathComponent:@"crash.log"];
+  NSString *appLogPath = [docPath stringByAppendingPathComponent:@"app.log"];
+
+  NSMutableString *history = [NSMutableString string];
+
+  if ([[NSFileManager defaultManager] fileExistsAtPath:crashPath]) {
+    NSString *crashLog = [NSString stringWithContentsOfFile:crashPath
+                                                   encoding:NSUTF8StringEncoding
+                                                      error:nil];
+    [history appendFormat:@"[CRASH LOG DETECTED]\n%@\n\n", crashLog];
+  }
+
+  // Read last 2KB of app log to avoid huge text
+  if ([[NSFileManager defaultManager] fileExistsAtPath:appLogPath]) {
+    NSFileHandle *file = [NSFileHandle fileHandleForReadingAtPath:appLogPath];
+    unsigned long long fileSize = [file seekToEndOfFile];
+    unsigned long long offset = (fileSize > 2048) ? fileSize - 2048 : 0;
+    [file seekToFileOffset:offset];
+    NSData *data = [file readDataToEndOfFile];
+    NSString *recentLog = [[NSString alloc] initWithData:data
+                                                encoding:NSUTF8StringEncoding];
+    [history appendFormat:@"[RECENT LOGS]\n%@\n", recentLog];
+  }
+
+  if (history.length > 0) {
+    _logView.text = history;
+  } else {
+    _logView.text = @"日志输出区域...\n";
+  }
+
   // Tap to dismiss keyboard
   UITapGestureRecognizer *tap =
       [[UITapGestureRecognizer alloc] initWithTarget:self.view
