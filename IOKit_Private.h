@@ -46,6 +46,8 @@ enum {
 #define kIOHIDEventFieldDigitizerIndex ((kIOHIDEventTypeDigitizer << 16) | 0)
 #define kIOHIDEventFieldDigitizerIdentity ((kIOHIDEventTypeDigitizer << 16) | 1)
 #define kIOHIDEventFieldDigitizerType ((kIOHIDEventTypeDigitizer << 16) | 9)
+#define kIOHIDEventFieldDigitizerIsDisplayIntegrated                           \
+  ((kIOHIDEventTypeDigitizer << 16) | 11)
 
 // Digitizer Transducer Types
 #define kIOHIDDigitizerTransducerTypeFinger 0
