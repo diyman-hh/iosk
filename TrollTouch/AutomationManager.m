@@ -21,133 +21,60 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   NSThread *_workerThread;
   AVAudioRecorder *_audioRecorder;
   UIBackgroundTaskIdentifier _bgTask;
+  UIWindow *_overlayWindow; // Transparent overlay to stay in foreground
 }
 
-// Log Path Helper - Public Downloads for easy access via Files app / 3uTools
-NSString *getLogDirectory() {
-  NSString *path = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
-  NSFileManager *fm = [NSFileManager defaultManager];
-  if (![fm fileExistsAtPath:path]) {
-    [fm createDirectoryAtPath:path
-        withIntermediateDirectories:YES
-                         attributes:nil
-                              error:nil];
-  }
-  return path;
-}
+// ... existing code ...
 
-// Crash & Log Handling
-void uncaughtExceptionHandler(NSException *exception) {
-  NSString *logPath =
-      [getLogDirectory() stringByAppendingPathComponent:@"crash.log"];
-  NSString *content = [NSString
-      stringWithFormat:@"CRASH EXCEPTION: %@\nReason: %@\nStack: %@\n\n",
-                       exception.name, exception.reason,
-                       exception.callStackSymbols];
+- (void)setupOverlayWindow {
+  if (_overlayWindow)
+    return;
 
-  // Append to file
-  FILE *f = fopen([logPath UTF8String], "a");
-  if (f) {
-    fprintf(f, "%s", [content UTF8String]);
-    fclose(f);
-  }
-}
+  dispatch_async(dispatch_get_main_queue(), ^{
+    // Create a transparent fullscreen window
+    CGRect screenBounds = [[UIScreen mainScreen] bounds];
+    self->_overlayWindow = [[UIWindow alloc] initWithFrame:screenBounds];
 
-void signalHandler(int signal) {
-  NSString *logPath =
-      [getLogDirectory() stringByAppendingPathComponent:@"crash.log"];
-  NSString *content =
-      [NSString stringWithFormat:@"CRASH SIGNAL: %d\nStack: %@\n\n", signal,
-                                 [NSThread callStackSymbols]];
+    // Set window level above alert to stay on top
+    self->_overlayWindow.windowLevel = UIWindowLevelAlert + 1;
 
-  FILE *f = fopen([logPath UTF8String], "a");
-  if (f) {
-    fprintf(f, "%s", [content UTF8String]);
-    fclose(f);
-  }
-  exit(signal);
-}
+    // Make it transparent
+    self->_overlayWindow.backgroundColor = [UIColor clearColor];
+    self->_overlayWindow.opaque = NO;
+    self->_overlayWindow.alpha = 0.01; // Almost invisible but still active
 
-+ (instancetype)sharedManager {
-  static AutomationManager *shared = nil;
-  static dispatch_once_t onceToken;
-  dispatch_once(&onceToken, ^{
-    // Setup Global Logging
-    NSString *logDir = getLogDirectory();
-    NSString *logPath = [logDir stringByAppendingPathComponent:@"app.log"];
+    // CRITICAL: Allow touches to pass through to apps below
+    self->_overlayWindow.userInteractionEnabled = NO;
 
-    // Redirect stdout/stderr to log file so we capture printf from C files too
-    freopen([logPath UTF8String], "a+", stdout);
-    freopen([logPath UTF8String], "a+", stderr);
+    // Add a tiny status indicator in top-right corner
+    UILabel *statusLabel = [[UILabel alloc]
+        initWithFrame:CGRectMake(screenBounds.size.width - 60, 20, 50, 20)];
+    statusLabel.text = @"🤖";
+    statusLabel.font = [UIFont systemFontOfSize:16];
+    statusLabel.textColor = [UIColor colorWithRed:0 green:1 blue:0 alpha:0.7];
+    statusLabel.backgroundColor = [UIColor colorWithWhite:0 alpha:0.3];
+    statusLabel.textAlignment = NSTextAlignmentCenter;
+    statusLabel.layer.cornerRadius = 10;
+    statusLabel.clipsToBounds = YES;
+    [self->_overlayWindow addSubview:statusLabel];
 
-    NSSetUncaughtExceptionHandler(&uncaughtExceptionHandler);
-    signal(SIGSEGV, signalHandler);
-    signal(SIGABRT, signalHandler);
-    signal(SIGILL, signalHandler);
+    // Make window visible
+    self->_overlayWindow.hidden = NO;
+    [self->_overlayWindow makeKeyAndVisible];
 
-    shared = [[AutomationManager alloc] init];
-    shared.config = (TrollConfig){.startHour = 9,
-                                  .endHour = 23,
-                                  .minWatchSec = 3,
-                                  .maxWatchSec = 8,
-                                  .swipeJitter = 0.05,
-                                  .isRunning = NO};
-    init_touch_system();
+    [self log:@"[系统] 透明覆盖窗口已创建 (保持前台运行)"];
   });
-  return shared;
 }
 
-- (void)log:(NSString *)format, ... {
-  va_list args;
-  va_start(args, format);
-  NSString *msg = [[NSString alloc] initWithFormat:format arguments:args];
-  va_end(args);
+- (void)removeOverlayWindow {
+  if (!_overlayWindow)
+    return;
 
-  // Print to stdout (which is now redirected to file)
-  NSString *tsMsg = [NSString stringWithFormat:@"[%@] %@", [NSDate date], msg];
-  printf("%s\n", [tsMsg UTF8String]);
-  fflush(stdout); // Ensure immediate write
-
-  // UI Callback
-  if (self.logHandler) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      self.logHandler(msg);
-    });
-  }
-}
-
-- (void)setupNotifications {
-  UNUserNotificationCenter *center =
-      [UNUserNotificationCenter currentNotificationCenter];
-  [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert +
-                                           UNAuthorizationOptionSound +
-                                           UNAuthorizationOptionBadge)
-                        completionHandler:^(BOOL granted,
-                                            NSError *_Nullable error) {
-                          if (granted) {
-                            printf("[System] Notifications granted\n");
-                          }
-                        }];
-}
-
-- (void)sendNotification:(NSString *)title body:(NSString *)body {
-  UNMutableNotificationContent *content =
-      [[UNMutableNotificationContent alloc] init];
-  content.title = title;
-  content.body = body;
-  content.sound = nil; // Silent update
-
-  UNTimeIntervalNotificationTrigger *trigger =
-      [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:0.1
-                                                         repeats:NO];
-  UNNotificationRequest *request =
-      [UNNotificationRequest requestWithIdentifier:[[NSUUID UUID] UUIDString]
-                                           content:content
-                                           trigger:trigger];
-
-  [[UNUserNotificationCenter currentNotificationCenter]
-      addNotificationRequest:request
-       withCompletionHandler:nil];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self->_overlayWindow.hidden = YES;
+    self->_overlayWindow = nil;
+    [self log:@"[系统] 透明覆盖窗口已移除"];
+  });
 }
 
 - (void)setupBackgrounds {
@@ -191,7 +118,8 @@ void signalHandler(int signal) {
 
   [self setupNotifications];
   [self setupBackgrounds];
-  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (录音保活模式)"];
+  [self setupOverlayWindow]; // Keep app in foreground with transparent overlay
+  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (前台模式)"];
 
   self.config = (TrollConfig){.startHour = self.config.startHour,
                               .endHour = self.config.endHour,
@@ -220,6 +148,8 @@ void signalHandler(int signal) {
     return;
 
   [self log:@"[*] 正在停止自动化服务..."];
+
+  [self removeOverlayWindow]; // Remove transparent overlay
 
   if (_audioRecorder)
     [_audioRecorder stop];
