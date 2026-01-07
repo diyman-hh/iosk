@@ -9,9 +9,10 @@ APPLICATION_NAME = TrollTouch
 TrollTouch_FILES = \
 	TrollTouch/main.m \
 	TrollTouch/AppDelegate.m \
-	TrollTouch/RootViewController.m
+	TrollTouch/RootViewController.m \
+	TrollTouch/XCTestRunner.m
 
-TrollTouch_FRAMEWORKS = UIKit CoreGraphics Foundation
+TrollTouch_FRAMEWORKS = UIKit CoreGraphics Foundation XCTest
 TrollTouch_CFLAGS = -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/application.mk
