@@ -284,10 +284,12 @@ void signalHandler(int signal) {
 - (void)performHumanSwipe {
   [self setupBackgrounds];
 
-  float startX = 0.5 + ((arc4random_uniform(20) - 10) / 100.0); // 0.40 - 0.60
-  float startY = 0.8 + ((arc4random_uniform(10) - 5) / 100.0);  // 0.75 - 0.85
-  float endX = startX + ((arc4random_uniform(10) - 5) / 100.0); // Slight drift
-  float endY = 0.2 + ((arc4random_uniform(10) - 5) / 100.0);    // 0.15 - 0.25
+  // Cast to int to prevent unsigned underflow when subtracting
+  float startX = 0.5f + ((int)arc4random_uniform(20) - 10) / 100.0f;
+  float startY = 0.8f + ((int)arc4random_uniform(10) - 5) / 100.0f;
+
+  float endX = startX + ((int)arc4random_uniform(10) - 5) / 100.0f;
+  float endY = 0.2f + ((int)arc4random_uniform(10) - 5) / 100.0f;
 
   [self log:@"[*] 执行滑动: (%.2f, %.2f) -> (%.2f, %.2f) 时长: 0.3s", startX,
             startY, endX, endY];
