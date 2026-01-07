@@ -18,7 +18,6 @@ TrollTouch_FILES = \
 
 TrollTouch_FRAMEWORKS = UIKit CoreGraphics Foundation AVFoundation Vision
 TrollTouch_CFLAGS = -fobjc-arc
-TrollTouch_LDFLAGS = -lIOKit
 
 include $(THEOS_MAKE_PATH)/application.mk
 
