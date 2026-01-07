@@ -5,12 +5,13 @@
 #import <AVFoundation/AVFoundation.h>
 #import <CoreLocation/CoreLocation.h>
 #import <UIKit/UIKit.h>
+#import <dlfcn.h> // Required for dlopen, dlsym, RTLD_LAZY
 #import <objc/runtime.h>
 #import <sys/utsname.h>
 
-
-#define TIKTOK_BUNDLE_ID @"com.zhiliaoapp.musically"
+#define TIKTOK_GLOBAL @"com.zhiliaoapp.musically" // Restored macro
 #define TIKTOK_CHINA @"com.ss.iphone.ugc.Aweme"
+#define TIKTOK_BUNDLE_ID @"com.zhiliaoapp.musically" // Kept for safety
 typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
 @implementation AutomationManager {
