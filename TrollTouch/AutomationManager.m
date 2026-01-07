@@ -22,6 +22,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   AVAudioRecorder *_audioRecorder;
   UIBackgroundTaskIdentifier _bgTask;
   UIWindow *_overlayWindow;
+  NSTimer *_windowKeepAliveTimer;
 }
 
 // Log Path Helper - Public Downloads for easy access via Files app / 3uTools
@@ -211,6 +212,14 @@ void signalHandler(int signal) {
 
     [self log:@"[系统] 透明覆盖窗口已创建 - 尺寸: %.0fx%.0f",
               screenBounds.size.width, screenBounds.size.height];
+
+    // Start timer to keep window visible
+    self->_windowKeepAliveTimer =
+        [NSTimer scheduledTimerWithTimeInterval:5.0
+                                         target:self
+                                       selector:@selector(ensureOverlayVisible)
+                                       userInfo:nil
+                                        repeats:YES];
   });
 }
 
@@ -262,6 +271,13 @@ void signalHandler(int signal) {
 - (void)removeOverlayWindow {
   if (!_overlayWindow)
     return;
+
+  // Stop keep-alive timer
+  if (_windowKeepAliveTimer) {
+    [_windowKeepAliveTimer invalidate];
+    _windowKeepAliveTimer = nil;
+  }
+
   dispatch_async(dispatch_get_main_queue(), ^{
     self->_overlayWindow.hidden = YES;
     self->_overlayWindow = nil;
@@ -382,6 +398,27 @@ void signalHandler(int signal) {
                                        false);
   }
   dlclose(handle);
+
+  // Critical: Re-show overlay window after TikTok launches
+  [NSThread sleepForTimeInterval:2.0];
+  [self ensureOverlayVisible];
+}
+
+- (void)ensureOverlayVisible {
+  if (!_overlayWindow)
+    return;
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if (self->_overlayWindow) {
+      self->_overlayWindow.hidden = NO;
+      [self->_overlayWindow makeKeyAndVisible];
+
+      // Force window to stay on top
+      self->_overlayWindow.windowLevel = UIWindowLevelAlert + 2;
+
+      [self log:@"[系统] 覆盖窗口已重新显示"];
+    }
+  });
 }
 
 - (void)performLike {
