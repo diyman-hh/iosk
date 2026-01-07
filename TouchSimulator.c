@@ -14,7 +14,11 @@ static IOHIDEventSystemClientRef ioSystemClient = NULL;
 // In a real app, this should be dynamically retrieved or hardcoded based on the
 // device board. Since we don't have the board ID, we use a common reliable
 // default or 0xDEFACED (mock).
-#define K_SENDER_ID 0x000000010000027F
+// Sender ID: On iOS 14/15, this usually needs to match the digitizer's Service
+// ID. However, 0x0000000100000000 often works as a "virtual" sender or try
+// capturing a real one. We will try a generic one that often works on
+// jailbroken tools.
+#define K_SENDER_ID 0x0000000100000000
 
 void init_touch_system() {
   if (ioSystemClient == NULL) {
@@ -36,6 +40,7 @@ void send_digitizer_event(float x, float y, int type) {
 
   // Type: 1=Touch/Start, 2=Move, 3=Release/End
   uint32_t eventMask = 0;
+  // Based on IOKit_Private.h fixes
   if (type == 1)
     eventMask = kIOHIDDigitizerEventTouch | kIOHIDDigitizerEventRange |
                 kIOHIDDigitizerEventStart;
@@ -44,21 +49,31 @@ void send_digitizer_event(float x, float y, int type) {
                 kIOHIDDigitizerEventPosition;
   if (type == 3)
     eventMask = kIOHIDDigitizerEventTouch | kIOHIDDigitizerEventRange |
-                kIOHIDDigitizerEventCancel; // Or End
+                kIOHIDDigitizerEventStop | kIOHIDDigitizerEventIdentity;
 
   uint64_t now = mach_absolute_time();
+  // Standard iOS 11-15 signature (from our header)
+  // x, y are 0.0-1.0
   IOHIDEventRef event = IOHIDEventCreateDigitizerEvent(
       kCFAllocatorDefault, now, kIOHIDEventTypeDigitizer, 0, 1, eventMask, 0, x,
       y, 0, 0, 0,
-      (type != 3), // Range usually true unless maybe end? keeping true is safer
-      (type != 3), // Touch true for start/move, false for end?
+      1, // Range
+      1, // Touch
       0);
 
-  // Fix touch flag for Release
+  // Set pressure manually if needed, or via SetIntegerValue
+  //   IOHIDEventSetFloatValue(event, (kIOHIDEventTypeDigitizer<<16)|1, 0.5); //
+  //   TipPressure if defined
+
+  // Fix specific fields
   if (type == 3) {
+    // Release: Touch=0, Range=0
     IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerTouch, 0);
-    IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerRange,
-                              0); // Lift finger
+    IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerRange, 0);
+  } else {
+    // Press/Move: Touch=1, Range=1
+    IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerTouch, 1);
+    IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerRange, 1);
   }
 
   IOHIDEventSetSenderID(event, K_SENDER_ID);
@@ -76,9 +91,9 @@ void perform_touch(float x, float y) {
 void perform_swipe(float x1, float y1, float x2, float y2, float duration_sec) {
   printf("[TouchSim] Swiping (%.2f, %.2f) -> (%.2f, %.2f)\n", x1, y1, x2, y2);
 
-  int steps = (int)(duration_sec * 60); // 60 Hz
-  if (steps < 10)
-    steps = 10;
+  int steps = (int)(duration_sec * 120); // Increase to 120Hz for smoothness
+  if (steps < 20)
+    steps = 20;
 
   // 1. Down
   send_digitizer_event(x1, y1, 1);
