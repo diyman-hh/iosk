@@ -184,6 +184,9 @@
 }
 
 - (void)testFollow {
+  [self appendLog:@"[测试] 正在切换到 TikTok..."];
+  [[AutomationManager sharedManager] launchTikTok];
+
   [self appendLog:@"[测试] 3秒后执行关注测试..."];
   dispatch_after(
       dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
@@ -193,6 +196,9 @@
 }
 
 - (void)testLike {
+  [self appendLog:@"[测试] 正在切换到 TikTok..."];
+  [[AutomationManager sharedManager] launchTikTok];
+
   [self appendLog:@"[测试] 3秒后执行点赞测试..."];
   dispatch_after(
       dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),
@@ -202,6 +208,9 @@
 }
 
 - (void)testSwipe {
+  [self appendLog:@"[测试] 正在切换到 TikTok..."];
+  [[AutomationManager sharedManager] launchTikTok];
+
   [self appendLog:@"[测试] 3秒后执行滑动测试..."];
   dispatch_after(
       dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)),

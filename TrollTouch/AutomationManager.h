@@ -19,6 +19,7 @@ typedef struct {
 - (void)startAutomation;
 - (void)stopAutomation;
 - (BOOL)isRunning;
+- (void)launchTikTok;      // 启动 TikTok
 - (void)performFollow;     // 测试: 关注
 - (void)performLike;       // 测试: 点赞
 - (void)performHumanSwipe; // 测试: 下一个视频
