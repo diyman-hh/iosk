@@ -18,7 +18,6 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   NSThread *_workerThread;
   AVAudioPlayer *_silentPlayer;
   UIWindow *_floatingWindow;
-  CLLocationManager *_locManager;
   UIBackgroundTaskIdentifier _bgTask;
 }
 
@@ -86,7 +85,7 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 }
 
 - (void)setupBackgrounds {
-  // 1. Audio (Existing)
+  // 1. Audio (Robust Keep-Alive)
   NSError *err = nil;
   [[AVAudioSession sharedInstance]
       setCategory:AVAudioSessionCategoryPlayback
@@ -100,30 +99,33 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
                                            fileTypeHint:AVFileTypeWAVE
                                                   error:&err];
     _silentPlayer.numberOfLoops = -1;
-    _silentPlayer.volume = 0.0;
+    _silentPlayer.volume = 0.0; // Muted
     [_silentPlayer prepareToPlay];
   }
   [_silentPlayer play];
 
-  // 2. Location (New Strong Keep-Alive)
-  if (!_locManager) {
-    _locManager = [[CLLocationManager alloc] init];
-    _locManager.allowsBackgroundLocationUpdates = YES;
-    _locManager.pausesLocationUpdatesAutomatically = NO;
-    _locManager.desiredAccuracy =
-        kCLLocationAccuracyThreeKilometers; // Low power
-    [_locManager requestAlwaysAuthorization];
-  }
-  [_locManager startUpdatingLocation];
-
-  // 3. Background Task Assertion
+  // 2. Background Task Assertion
   _bgTask = [[UIApplication sharedApplication]
       beginBackgroundTaskWithExpirationHandler:^{
         [[UIApplication sharedApplication] endBackgroundTask:self->_bgTask];
         self->_bgTask = UIBackgroundTaskInvalid;
       }];
 
-  [self log:@"[系统] 强效后台保活(音频+定位) 已启动"];
+  [self log:@"[系统] 音频保活已启动 (无限后台权限尝试中)"];
+}
+
+- (void)updateFloatingWindowHeartbeat {
+  static int seconds = 0;
+  seconds++;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if (self->_floatingWindow) {
+      UILabel *lbl = [self->_floatingWindow.subviews firstObject];
+      if (lbl && [lbl isKindOfClass:[UILabel class]]) {
+        lbl.text =
+            [NSString stringWithFormat:@"TrollTouch 运行中... (%d秒)", seconds];
+      }
+    }
+  });
 }
 
 - (void)startAutomation {
@@ -156,8 +158,6 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
   if (_silentPlayer)
     [_silentPlayer stop];
-  if (_locManager)
-    [_locManager stopUpdatingLocation];
   if (_bgTask != UIBackgroundTaskInvalid) {
     [[UIApplication sharedApplication] endBackgroundTask:_bgTask];
     _bgTask = UIBackgroundTaskInvalid;
@@ -297,9 +297,18 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
   int count = 0;
   while (self.config.isRunning && ![[NSThread currentThread] isCancelled]) {
-    if (![self isWorkingHour]) {
-      [self log:@"[-] 非工作时间，暂停5分钟..."];
-      [NSThread sleepForTimeInterval:300];
+    // Heartbeat
+    [self updateFloatingWindowHeartbeat];
+
+    NSDate *now = [NSDate date];
+    NSCalendar *calendar = [NSCalendar currentCalendar];
+    NSInteger hour = [calendar component:NSCalendarUnitHour fromDate:now];
+
+    // Check working hours
+    if (hour < self.config.startHour || hour >= self.config.endHour) {
+      [self log:@"[休息中] 当前 %ld点 (工作时间: %d-%d)", (long)hour,
+                self.config.startHour, self.config.endHour];
+      [NSThread sleepForTimeInterval:60.0];
       continue;
     }
 
