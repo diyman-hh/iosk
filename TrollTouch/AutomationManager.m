@@ -8,6 +8,8 @@
 #import <UserNotifications/UserNotifications.h>
 #import <dlfcn.h> // Required for dlopen, dlsym, RTLD_LAZY
 #import <objc/runtime.h>
+#import <signal.h>
+#import <stdlib.h>
 #import <sys/utsname.h>
 
 #define TIKTOK_GLOBAL @"com.zhiliaoapp.musically" // Restored macro
