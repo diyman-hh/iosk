@@ -52,88 +52,82 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
   }
 }
 
-- (void)showFloatingWindow {
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if (!_floatingWindow) {
-      _floatingWindow = [[UIWindow alloc]
-          initWithFrame:CGRectMake(
-                            0, 0, [UIScreen mainScreen].bounds.size.width, 24)];
-      _floatingWindow.windowLevel = UIWindowLevelAlert + 1000;
-      _floatingWindow.backgroundColor =
-          [[UIColor blackColor] colorWithAlphaComponent:0.7];
-      _floatingWindow.userInteractionEnabled = NO;
-      _floatingWindow.rootViewController =
-          [UIViewController new]; // Required for iOS 9+
-
-      UILabel *lbl = [[UILabel alloc] initWithFrame:_floatingWindow.bounds];
-      lbl.text = @"TrollTouch 正在运行中... (保活生效)";
-      lbl.textColor = [UIColor greenColor];
-      lbl.textAlignment = NSTextAlignmentCenter;
-      lbl.font = [UIFont boldSystemFontOfSize:12];
-      [_floatingWindow addSubview:lbl];
-    }
-    _floatingWindow.hidden = NO;
-    [_floatingWindow makeKeyAndVisible];
-  });
+- (void)setupNotifications {
+  UNUserNotificationCenter *center =
+      [UNUserNotificationCenter currentNotificationCenter];
+  [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert +
+                                           UNAuthorizationOptionSound +
+                                           UNAuthorizationOptionBadge)
+                        completionHandler:^(BOOL granted,
+                                            NSError *_Nullable error) {
+                          if (granted) {
+                            printf("[System] Notifications granted\n");
+                          }
+                        }];
 }
 
-- (void)hideFloatingWindow {
-  dispatch_async(dispatch_get_main_queue(), ^{
-    _floatingWindow.hidden = YES;
-    _floatingWindow = nil;
-  });
+- (void)sendNotification:(NSString *)title body:(NSString *)body {
+  UNMutableNotificationContent *content =
+      [[UNMutableNotificationContent alloc] init];
+  content.title = title;
+  content.body = body;
+  content.sound = nil; // Silent update
+
+  UNTimeIntervalNotificationTrigger *trigger =
+      [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:0.1
+                                                         repeats:NO];
+  UNNotificationRequest *request =
+      [UNNotificationRequest requestWithIdentifier:[[NSUUID UUID] UUIDString]
+                                           content:content
+                                           trigger:trigger];
+
+  [[UNUserNotificationCenter currentNotificationCenter]
+      addNotificationRequest:request
+       withCompletionHandler:nil];
 }
 
 - (void)setupBackgrounds {
-  // 1. Audio (Robust Keep-Alive)
+  // 1. Audio Recording (Aggressive Keep-Alive)
   NSError *err = nil;
-  [[AVAudioSession sharedInstance]
-      setCategory:AVAudioSessionCategoryPlayback
-      withOptions:AVAudioSessionCategoryOptionMixWithOthers
-            error:&err];
-  [[AVAudioSession sharedInstance] setActive:YES error:&err];
+  AVAudioSession *session = [AVAudioSession sharedInstance];
+  [session setCategory:AVAudioSessionCategoryPlayAndRecord
+           withOptions:AVAudioSessionCategoryOptionMixWithOthers |
+                       AVAudioSessionCategoryOptionDuckOthers
+                 error:&err];
+  [session setActive:YES error:&err];
 
-  if (!_silentPlayer) {
-    NSMutableData *data = [NSMutableData dataWithLength:44100 * 2];
-    _silentPlayer = [[AVAudioPlayer alloc] initWithData:data
-                                           fileTypeHint:AVFileTypeWAVE
-                                                  error:&err];
-    _silentPlayer.numberOfLoops = -1;
-    _silentPlayer.volume = 0.0; // Muted
-    [_silentPlayer prepareToPlay];
+  if (!_audioRecorder) {
+    NSURL *url = [NSURL fileURLWithPath:@"/dev/null"];
+    NSDictionary *settings = @{
+      AVFormatIDKey : @(kAudioFormatAppleLossless),
+      AVSampleRateKey : @44100.0f,
+      AVNumberOfChannelsKey : @1,
+      AVEncoderAudioQualityKey : @(AVAudioQualityMin)
+    };
+    _audioRecorder = [[AVAudioRecorder alloc] initWithURL:url
+                                                 settings:settings
+                                                    error:&err];
+    [_audioRecorder prepareToRecord];
   }
-  [_silentPlayer play];
+  [_audioRecorder record];
 
-  // 2. Background Task Assertion
+  // 2. Background Task
   _bgTask = [[UIApplication sharedApplication]
       beginBackgroundTaskWithExpirationHandler:^{
         [[UIApplication sharedApplication] endBackgroundTask:self->_bgTask];
         self->_bgTask = UIBackgroundTaskInvalid;
       }];
 
-  [self log:@"[系统] 音频保活已启动 (无限后台权限尝试中)"];
-}
-
-- (void)updateFloatingWindowHeartbeat {
-  static int seconds = 0;
-  seconds++;
-  dispatch_async(dispatch_get_main_queue(), ^{
-    if (self->_floatingWindow) {
-      UILabel *lbl = [self->_floatingWindow.subviews firstObject];
-      if (lbl && [lbl isKindOfClass:[UILabel class]]) {
-        lbl.text =
-            [NSString stringWithFormat:@"TrollTouch 运行中... (%d秒)", seconds];
-      }
-    }
-  });
+  [self log:@"[系统] 录音后台保活已启动"];
 }
 
 - (void)startAutomation {
   if (self.config.isRunning)
     return;
 
+  [self setupNotifications];
   [self setupBackgrounds];
-  [self showFloatingWindow];
+  [self sendNotification:@"TrollTouch" body:@"自动化服务已启动 (录音保活模式)"];
 
   self.config = (TrollConfig){.startHour = self.config.startHour,
                               .endHour = self.config.endHour,
@@ -156,14 +150,14 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 
   [self log:@"[*] 正在停止自动化服务..."];
 
-  if (_silentPlayer)
-    [_silentPlayer stop];
+  if (_audioRecorder)
+    [_audioRecorder stop];
   if (_bgTask != UIBackgroundTaskInvalid) {
     [[UIApplication sharedApplication] endBackgroundTask:_bgTask];
     _bgTask = UIBackgroundTaskInvalid;
   }
 
-  [self hideFloatingWindow];
+  [self sendNotification:@"TrollTouch" body:@"自动化服务已停止"];
 
   TrollConfig newConfig = self.config;
   newConfig.isRunning = NO;
