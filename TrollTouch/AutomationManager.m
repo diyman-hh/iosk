@@ -1,22 +1,24 @@
 #import "AutomationManager.h"
-#import "IOKit_Private.h"
 #import "ScreenCapture.h"
-#include "TouchSimulator.c"
+#import "TouchSimulator.h"
 #import "VisionHelper.h"
+#import <AVFoundation/AVFoundation.h>
+#import <CoreLocation/CoreLocation.h>
 #import <UIKit/UIKit.h>
-#import <dlfcn.h>
+#import <objc/runtime.h>
+#import <sys/utsname.h>
 
-// Internal Configuration
-#define TIKTOK_GLOBAL @"com.zhiliaoapp.musically"
+
+#define TIKTOK_BUNDLE_ID @"com.zhiliaoapp.musically"
 #define TIKTOK_CHINA @"com.ss.iphone.ugc.Aweme"
 typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
-
-#import <AVFoundation/AVFoundation.h>
 
 @implementation AutomationManager {
   NSThread *_workerThread;
   AVAudioPlayer *_silentPlayer;
   UIWindow *_floatingWindow;
+  CLLocationManager *_locManager;
+  UIBackgroundTaskIdentifier _bgTask;
 }
 
 + (instancetype)sharedManager {
