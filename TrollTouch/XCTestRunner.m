@@ -6,20 +6,9 @@
 //
 
 #import "XCTestRunner.h"
+#import <dlfcn.h>
 #import <objc/runtime.h>
 
-// Forward declare XCTest classes since we can't import the header
-@interface XCTestSuite : NSObject
-+ (instancetype)testSuiteForTestCaseClass:(Class)testCaseClass;
-- (void)performTest:(id)run;
-@property(nonatomic, readonly) NSArray *tests;
-@end
-
-@interface XCTestSuiteRun : NSObject
-- (instancetype)initWithTest:(id)test;
-@property(nonatomic, readonly) NSUInteger testCaseCount;
-@property(nonatomic, readonly) NSUInteger totalFailureCount;
-@end
 
 static BOOL _isRunning = NO;
 static NSThread *_testThread = nil;
@@ -83,7 +72,7 @@ static NSThread *_testThread = nil;
 
     NSLog(@"[XCTestRunner] ✅ Test bundle loaded");
 
-    // Get test class
+    // Get test class using runtime
     Class testClass = NSClassFromString(@"TrollTouchUITests");
     if (!testClass) {
       NSLog(@"[XCTestRunner] ❌ Failed to find test class");
@@ -93,31 +82,53 @@ static NSThread *_testThread = nil;
 
     NSLog(@"[XCTestRunner] ✅ Found test class: %@", testClass);
 
-    // Create test suite
-    XCTestSuite *suite = [XCTestSuite testSuiteForTestCaseClass:testClass];
+    // Get XCTestSuite class dynamically
+    Class suiteClass = NSClassFromString(@"XCTestSuite");
+    if (!suiteClass) {
+      NSLog(@"[XCTestRunner] ❌ Failed to find XCTestSuite class");
+      _isRunning = NO;
+      return;
+    }
+
+    // Create test suite using runtime
+    SEL suiteSelector = NSSelectorFromString(@"testSuiteForTestCaseClass:");
+    if (![suiteClass respondsToSelector:suiteSelector]) {
+      NSLog(@"[XCTestRunner] ❌ XCTestSuite doesn't respond to "
+            @"testSuiteForTestCaseClass:");
+      _isRunning = NO;
+      return;
+    }
+
+// Invoke the method to get test suite
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    id suite = [suiteClass performSelector:suiteSelector withObject:testClass];
+#pragma clang diagnostic pop
+
     if (!suite) {
       NSLog(@"[XCTestRunner] ❌ Failed to create test suite");
       _isRunning = NO;
       return;
     }
 
-    NSLog(@"[XCTestRunner] ✅ Created test suite with %lu tests",
-          (unsigned long)suite.tests.count);
+    NSLog(@"[XCTestRunner] ✅ Created test suite");
 
-    // Run the main automation test
+    // Run the test
     @try {
       NSLog(@"[XCTestRunner] 🚀 Starting test execution...");
 
-      // Create test run
-      XCTestSuiteRun *run = [[XCTestSuiteRun alloc] initWithTest:suite];
+      // Simply call the run method on the suite
+      SEL runSelector = NSSelectorFromString(@"run");
+      if ([suite respondsToSelector:runSelector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [suite performSelector:runSelector];
+#pragma clang diagnostic pop
 
-      // Perform test
-      [suite performTest:run];
-
-      NSLog(@"[XCTestRunner] ✅ Test execution completed");
-      NSLog(@"[XCTestRunner] Results: %lu tests, %lu failures",
-            (unsigned long)run.testCaseCount,
-            (unsigned long)run.totalFailureCount);
+        NSLog(@"[XCTestRunner] ✅ Test execution completed");
+      } else {
+        NSLog(@"[XCTestRunner] ❌ Suite doesn't respond to run");
+      }
     } @catch (NSException *exception) {
       NSLog(@"[XCTestRunner] ❌ Exception during test: %@", exception);
     } @finally {
