@@ -6,8 +6,20 @@
 //
 
 #import "XCTestRunner.h"
-#import <XCTest/XCTest.h>
 #import <objc/runtime.h>
+
+// Forward declare XCTest classes since we can't import the header
+@interface XCTestSuite : NSObject
++ (instancetype)testSuiteForTestCaseClass:(Class)testCaseClass;
+- (void)performTest:(id)run;
+@property(nonatomic, readonly) NSArray *tests;
+@end
+
+@interface XCTestSuiteRun : NSObject
+- (instancetype)initWithTest:(id)test;
+@property(nonatomic, readonly) NSUInteger testCaseCount;
+@property(nonatomic, readonly) NSUInteger totalFailureCount;
+@end
 
 static BOOL _isRunning = NO;
 static NSThread *_testThread = nil;

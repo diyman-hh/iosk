@@ -13,7 +13,7 @@ TrollTouch_FILES = \
 	TrollTouch/XCTestRunner.m \
 	TrollTouch/ScheduleManager.m
 
-TrollTouch_FRAMEWORKS = UIKit CoreGraphics Foundation XCTest
+TrollTouch_FRAMEWORKS = UIKit CoreGraphics Foundation
 TrollTouch_CFLAGS = -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/application.mk
