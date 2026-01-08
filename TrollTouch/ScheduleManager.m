@@ -7,6 +7,7 @@
 
 #import "ScheduleManager.h"
 #import "XCTestRunner.h"
+#import <UserNotifications/UserNotifications.h>
 
 @implementation ScheduleManager {
   NSTimer *_checkTimer;
