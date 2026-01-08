@@ -18,14 +18,14 @@ TrollTouch_CFLAGS = -fobjc-arc
 
 include $(THEOS_MAKE_PATH)/application.mk
 
-# XCTest Bundle
+# XCTest Bundle - compiled without XCTest framework (loaded at runtime)
 BUNDLE_NAME = TrollTouchUITests
 TrollTouchUITests_FILES = TrollTouchUITests/TrollTouchUITests.m
 TrollTouchUITests_INSTALL_PATH = /Applications/TrollTouch.app/PlugIns
-TrollTouchUITests_FRAMEWORKS = XCTest
 TrollTouchUITests_BUNDLE_EXTENSION = xctest
-TrollTouchUITests_CFLAGS = -fobjc-arc -F$(THEOS)/vendor/lib -F$(THEOS)/sdks/iPhoneOS.sdk/System/Library/PrivateFrameworks
-TrollTouchUITests_LDFLAGS = -F$(THEOS)/vendor/lib -F$(THEOS)/sdks/iPhoneOS.sdk/System/Library/PrivateFrameworks
+TrollTouchUITests_CFLAGS = -fobjc-arc -Wno-error -Wno-unused-variable
+# Don't link XCTest framework - it will be loaded at runtime
+TrollTouchUITests_LDFLAGS = -framework Foundation -framework UIKit -framework CoreGraphics
 
 include $(THEOS_MAKE_PATH)/bundle.mk
 

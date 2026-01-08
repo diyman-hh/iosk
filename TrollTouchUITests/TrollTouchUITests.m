@@ -5,8 +5,31 @@
 //  XCTest-based TikTok automation
 //
 
-#import <XCTest/XCTest.h>
+#import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
+#import <objc/runtime.h>
 
+// Forward declare XCTest classes - will be loaded at runtime
+@interface XCTestCase : NSObject
+@property(nonatomic, assign) BOOL continueAfterFailure;
+- (void)setUp;
+- (void)tearDown;
+@end
+
+@interface XCUIApplication : NSObject
+- (instancetype)initWithBundleIdentifier:(NSString *)bundleIdentifier;
+- (void)launch;
+- (BOOL)exists;
+- (id)coordinateWithNormalizedOffset:(CGVector)normalizedOffset;
+@end
+
+@interface XCUICoordinate : NSObject
+- (void)tap;
+- (void)pressForDuration:(NSTimeInterval)duration
+    thenDragToCoordinate:(XCUICoordinate *)otherCoordinate;
+@end
+
+// Our test class
 @interface TrollTouchUITests : XCTestCase
 @property(nonatomic, strong) XCUIApplication *tiktok;
 @property(nonatomic, assign) int videoCount;
