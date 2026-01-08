@@ -2,71 +2,117 @@
 //  XCTestRunner.m
 //  TrollTouch
 //
-//  Programmatic XCTest runner - runs tests without Xcode
+//  Run XCTest without Xcode - directly from TrollStore app
 //
 
 #import "XCTestRunner.h"
 #import <XCTest/XCTest.h>
 #import <objc/runtime.h>
 
+static BOOL _isRunning = NO;
+static NSThread *_testThread = nil;
+
 @implementation XCTestRunner
 
++ (void)startAutomation {
+  if (_isRunning) {
+    NSLog(@"[XCTestRunner] Already running");
+    return;
+  }
+
+  NSLog(@"[XCTestRunner] Starting automation...");
+  _isRunning = YES;
+
+  // Run in background thread
+  _testThread = [[NSThread alloc] initWithTarget:self
+                                        selector:@selector(runTestsInBackground)
+                                          object:nil];
+  [_testThread start];
+}
+
++ (void)stopAutomation {
+  NSLog(@"[XCTestRunner] Stopping automation...");
+  _isRunning = NO;
+
+  if (_testThread) {
+    [_testThread cancel];
+    _testThread = nil;
+  }
+}
+
++ (BOOL)isRunning {
+  return _isRunning;
+}
+
 + (void)runTestsInBackground {
-  dispatch_async(
-      dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-        NSLog(@"[XCTestRunner] 开始加载测试...");
+  @autoreleasepool {
+    NSLog(@"[XCTestRunner] Loading test bundle...");
 
-        // 等待应用完全启动
-        sleep(2);
+    // Get test bundle path
+    NSString *bundlePath = [[NSBundle mainBundle].bundlePath
+        stringByAppendingPathComponent:@"PlugIns/TrollTouchUITests.xctest"];
 
-        // 尝试加载测试 Bundle
-        NSString *testBundlePath = [[NSBundle mainBundle].bundlePath
-            stringByAppendingPathComponent:@"PlugIns/TrollTouchUITests.xctest"];
+    NSLog(@"[XCTestRunner] Bundle path: %@", bundlePath);
 
-        NSBundle *testBundle = [NSBundle bundleWithPath:testBundlePath];
+    // Load test bundle
+    NSBundle *testBundle = [NSBundle bundleWithPath:bundlePath];
+    if (!testBundle) {
+      NSLog(@"[XCTestRunner] ❌ Failed to find test bundle");
+      _isRunning = NO;
+      return;
+    }
 
-        if (!testBundle) {
-          NSLog(@"[XCTestRunner] 错误: 找不到测试 Bundle");
-          NSLog(@"[XCTestRunner] 路径: %@", testBundlePath);
-          return;
-        }
+    NSError *error = nil;
+    if (![testBundle loadAndReturnError:&error]) {
+      NSLog(@"[XCTestRunner] ❌ Failed to load test bundle: %@", error);
+      _isRunning = NO;
+      return;
+    }
 
-        NSError *error = nil;
-        if (![testBundle loadAndReturnError:&error]) {
-          NSLog(@"[XCTestRunner] 错误: 无法加载测试 Bundle: %@", error);
-          return;
-        }
+    NSLog(@"[XCTestRunner] ✅ Test bundle loaded");
 
-        NSLog(@"[XCTestRunner] 测试 Bundle 加载成功");
+    // Get test class
+    Class testClass = NSClassFromString(@"TrollTouchUITests");
+    if (!testClass) {
+      NSLog(@"[XCTestRunner] ❌ Failed to find test class");
+      _isRunning = NO;
+      return;
+    }
 
-        // 获取测试类
-        Class testClass = NSClassFromString(@"TrollTouchUITests");
-        if (!testClass) {
-          NSLog(@"[XCTestRunner] 错误: 找不到测试类 TrollTouchUITests");
-          return;
-        }
+    NSLog(@"[XCTestRunner] ✅ Found test class: %@", testClass);
 
-        NSLog(@"[XCTestRunner] 找到测试类: %@", testClass);
+    // Create test suite
+    XCTestSuite *suite = [XCTestSuite testSuiteForTestCaseClass:testClass];
+    if (!suite) {
+      NSLog(@"[XCTestRunner] ❌ Failed to create test suite");
+      _isRunning = NO;
+      return;
+    }
 
-        // 创建测试实例
-        XCTestCase *testCase = [[testClass alloc]
-            initWithSelector:@selector(testTikTokAutomation)];
+    NSLog(@"[XCTestRunner] ✅ Created test suite with %lu tests",
+          (unsigned long)suite.tests.count);
 
-        if (!testCase) {
-          NSLog(@"[XCTestRunner] 错误: 无法创建测试实例");
-          return;
-        }
+    // Run the main automation test
+    @try {
+      NSLog(@"[XCTestRunner] 🚀 Starting test execution...");
 
-        NSLog(@"[XCTestRunner] 开始运行测试: testTikTokAutomation");
+      // Create test run
+      XCTestSuiteRun *run = [[XCTestSuiteRun alloc] initWithTest:suite];
 
-        // 运行测试
-        @try {
-          [testCase invokeTest];
-          NSLog(@"[XCTestRunner] 测试完成");
-        } @catch (NSException *exception) {
-          NSLog(@"[XCTestRunner] 测试异常: %@", exception);
-        }
-      });
+      // Perform test
+      [suite performTest:run];
+
+      NSLog(@"[XCTestRunner] ✅ Test execution completed");
+      NSLog(@"[XCTestRunner] Results: %lu tests, %lu failures",
+            (unsigned long)run.testCaseCount,
+            (unsigned long)run.totalFailureCount);
+    } @catch (NSException *exception) {
+      NSLog(@"[XCTestRunner] ❌ Exception during test: %@", exception);
+    } @finally {
+      _isRunning = NO;
+      NSLog(@"[XCTestRunner] Test runner stopped");
+    }
+  }
 }
 
 @end

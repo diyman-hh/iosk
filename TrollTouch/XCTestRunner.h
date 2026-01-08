@@ -2,13 +2,22 @@
 //  XCTestRunner.h
 //  TrollTouch
 //
-//  Programmatic XCTest runner
+//  Run XCTest without Xcode - directly from TrollStore app
 //
 
 #import <Foundation/Foundation.h>
 
 @interface XCTestRunner : NSObject
 
-+ (void)runTestsInBackground;
+@property(nonatomic, assign, readonly) BOOL isRunning;
+
+// Start automation test
++ (void)startAutomation;
+
+// Stop automation test
++ (void)stopAutomation;
+
+// Check if tests are running
++ (BOOL)isRunning;
 
 @end

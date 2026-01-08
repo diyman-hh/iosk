@@ -1,10 +1,12 @@
 //
 //  RootViewController.m
-//  TrollTouch (Simplified - One Button Start)
+//  TrollTouch (XCTest + TrollStore Perfect Solution)
 //
 
 #import "RootViewController.h"
-#import "AutomationManager.h"
+#import "ScheduleManager.h"
+#import "XCTestRunner.h"
+
 
 @implementation RootViewController
 
@@ -17,44 +19,117 @@
                                               alpha:1.0];
 
   CGFloat w = self.view.bounds.size.width;
-  CGFloat y = 100;
+  CGFloat y = 60;
 
   // Title
   UILabel *titleLabel =
       [[UILabel alloc] initWithFrame:CGRectMake(20, y, w - 40, 50)];
-  titleLabel.text = @"🤖 TrollTouch";
+  titleLabel.text = @"🤖 TikTok 自动化";
   titleLabel.font = [UIFont boldSystemFontOfSize:32];
   titleLabel.textAlignment = NSTextAlignmentCenter;
   [self.view addSubview:titleLabel];
-  y += 70;
+  y += 60;
 
   // Subtitle
   UILabel *subtitle =
-      [[UILabel alloc] initWithFrame:CGRectMake(20, y, w - 40, 30)];
-  subtitle.text = @"TikTok 自动化工具";
-  subtitle.font = [UIFont systemFontOfSize:16];
+      [[UILabel alloc] initWithFrame:CGRectMake(20, y, w - 40, 25)];
+  subtitle.text = @"TrollStore + XCTest 完美方案";
+  subtitle.font = [UIFont systemFontOfSize:14];
   subtitle.textColor = [UIColor grayColor];
   subtitle.textAlignment = NSTextAlignmentCenter;
   [self.view addSubview:subtitle];
-  y += 60;
+  y += 45;
 
+  // === 定时设置区域 ===
+  UIView *scheduleSection =
+      [[UIView alloc] initWithFrame:CGRectMake(20, y, w - 40, 180)];
+  scheduleSection.backgroundColor = [UIColor whiteColor];
+  scheduleSection.layer.cornerRadius = 12;
+  scheduleSection.layer.shadowColor = [UIColor blackColor].CGColor;
+  scheduleSection.layer.shadowOffset = CGSizeMake(0, 2);
+  scheduleSection.layer.shadowRadius = 4;
+  scheduleSection.layer.shadowOpacity = 0.1;
+  [self.view addSubview:scheduleSection];
+
+  // 定时开关
+  UILabel *scheduleLabel =
+      [[UILabel alloc] initWithFrame:CGRectMake(15, 15, 200, 30)];
+  scheduleLabel.text = @"启用定时任务";
+  scheduleLabel.font = [UIFont boldSystemFontOfSize:16];
+  [scheduleSection addSubview:scheduleLabel];
+
+  UISwitch *scheduleSwitch =
+      [[UISwitch alloc] initWithFrame:CGRectMake(w - 90, 15, 51, 31)];
+  scheduleSwitch.on = [ScheduleManager sharedManager].isEnabled;
+  [scheduleSwitch addTarget:self
+                     action:@selector(scheduleToggled:)
+           forControlEvents:UIControlEventValueChanged];
+  [scheduleSection addSubview:scheduleSwitch];
+
+  // 开始时间
+  UILabel *startLabel =
+      [[UILabel alloc] initWithFrame:CGRectMake(15, 60, 100, 30)];
+  startLabel.text = @"开始时间:";
+  startLabel.font = [UIFont systemFontOfSize:14];
+  [scheduleSection addSubview:startLabel];
+
+  UITextField *startField =
+      [[UITextField alloc] initWithFrame:CGRectMake(120, 60, 80, 30)];
+  startField.text = [NSString
+      stringWithFormat:@"%ld:00",
+                       (long)[ScheduleManager sharedManager].startHour];
+  startField.borderStyle = UITextBorderStyleRoundedRect;
+  startField.textAlignment = NSTextAlignmentCenter;
+  startField.tag = 100;
+  [scheduleSection addSubview:startField];
+
+  // 结束时间
+  UILabel *endLabel =
+      [[UILabel alloc] initWithFrame:CGRectMake(15, 105, 100, 30)];
+  endLabel.text = @"结束时间:";
+  endLabel.font = [UIFont systemFontOfSize:14];
+  [scheduleSection addSubview:endLabel];
+
+  UITextField *endField =
+      [[UITextField alloc] initWithFrame:CGRectMake(120, 105, 80, 30)];
+  endField.text =
+      [NSString stringWithFormat:@"%ld:00",
+                                 (long)[ScheduleManager sharedManager].endHour];
+  endField.borderStyle = UITextBorderStyleRoundedRect;
+  endField.textAlignment = NSTextAlignmentCenter;
+  endField.tag = 101;
+  [scheduleSection addSubview:endField];
+
+  // 保存按钮
+  UIButton *saveButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  saveButton.frame = CGRectMake(15, 145, w - 70, 25);
+  [saveButton setTitle:@"保存设置" forState:UIControlStateNormal];
+  saveButton.titleLabel.font = [UIFont systemFontOfSize:14];
+  [saveButton addTarget:self
+                 action:@selector(saveSchedule)
+       forControlEvents:UIControlEventTouchUpInside];
+  [scheduleSection addSubview:saveButton];
+
+  y += 200;
+
+  // === 手动控制区域 ===
   // Start button
   UIButton *startButton = [UIButton buttonWithType:UIButtonTypeSystem];
-  startButton.frame = CGRectMake(40, y, w - 80, 70);
-  [startButton setTitle:@"🚀 启动自动化" forState:UIControlStateNormal];
-  startButton.titleLabel.font = [UIFont boldSystemFontOfSize:24];
+  startButton.frame = CGRectMake(40, y, w - 80, 60);
+  [startButton setTitle:@"🚀 立即启动" forState:UIControlStateNormal];
+  startButton.titleLabel.font = [UIFont boldSystemFontOfSize:20];
   startButton.backgroundColor = [UIColor colorWithRed:0.2
                                                 green:0.8
                                                  blue:0.4
                                                 alpha:1.0];
   [startButton setTitleColor:[UIColor whiteColor]
                     forState:UIControlStateNormal];
-  startButton.layer.cornerRadius = 16;
+  startButton.layer.cornerRadius = 12;
   [startButton addTarget:self
-                  action:@selector(startAutomation)
+                  action:@selector(startNow)
         forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:startButton];
-  y += 90;
+  y += 70;
 
   // Stop button
   UIButton *stopButton = [UIButton buttonWithType:UIButtonTypeSystem];
@@ -68,57 +143,85 @@
   [stopButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
   stopButton.layer.cornerRadius = 12;
   [stopButton addTarget:self
-                 action:@selector(stopAutomation)
+                 action:@selector(stopNow)
        forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:stopButton];
   y += 70;
 
-  // Info
+  // === 说明区域 ===
   UITextView *info =
-      [[UITextView alloc] initWithFrame:CGRectMake(20, y, w - 40, 250)];
+      [[UITextView alloc] initWithFrame:CGRectMake(20, y, w - 40, 180)];
   info.editable = NO;
-  info.font = [UIFont systemFontOfSize:14];
+  info.font = [UIFont systemFontOfSize:13];
   info.backgroundColor = [UIColor clearColor];
   info.text = @"📱 功能说明\n\n"
-              @"• 自动刷 TikTok 视频\n"
-              @"• 随机点赞和关注\n"
-              @"• 模拟真人操作\n"
-              @"• 后台运行支持\n\n"
-              @"📊 日志位置\n\n"
-              @"日志保存在:\n"
-              @"/var/mobile/Documents/app.log\n\n"
-              @"可以通过文件管理器查看\n"
-              @"或使用 idevicesyslog 实时查看\n\n"
-              @"⚠️ 注意事项\n\n"
-              @"• 确保 TikTok 已安装\n"
-              @"• 首次运行需要授权\n"
-              @"• 建议连接充电器";
+              @"✅ 使用 XCTest 框架，真正的跨应用控制\n"
+              @"✅ TrollStore 提供永久签名和系统权限\n"
+              @"✅ 支持定时自动运行\n"
+              @"✅ 不会被 TikTok 检测\n\n"
+              @"⚙️ 使用方法\n\n"
+              @"1. 设置工作时间（如 9:00 - 18:00）\n"
+              @"2. 启用定时任务开关\n"
+              @"3. 应用会在设定时间自动运行\n"
+              @"4. 或点击「立即启动」手动开始";
   [self.view addSubview:info];
 }
 
-- (void)startAutomation {
-  NSLog(@"[UI] 用户点击启动");
+- (void)scheduleToggled:(UISwitch *)sender {
+  [ScheduleManager sharedManager].isEnabled = sender.on;
 
-  if ([[AutomationManager sharedManager] isRunning]) {
+  if (sender.on) {
+    [[ScheduleManager sharedManager] startSchedule];
+    [self showToast:@"✅ 定时任务已启用"];
+  } else {
+    [[ScheduleManager sharedManager] stopSchedule];
+    [self showToast:@"⏹ 定时任务已禁用"];
+  }
+}
+
+- (void)saveSchedule {
+  UITextField *startField = (UITextField *)[self.view viewWithTag:100];
+  UITextField *endField = (UITextField *)[self.view viewWithTag:101];
+
+  // Parse hours from text fields
+  NSInteger startHour = [startField.text integerValue];
+  NSInteger endHour = [endField.text integerValue];
+
+  if (startHour < 0 || startHour > 23 || endHour < 0 || endHour > 23) {
+    [self showAlert:@"错误" message:@"请输入有效的小时数（0-23）"];
+    return;
+  }
+
+  [ScheduleManager sharedManager].startHour = startHour;
+  [ScheduleManager sharedManager].endHour = endHour;
+
+  [self showToast:@"✅ 设置已保存"];
+
+  // Restart schedule if enabled
+  if ([ScheduleManager sharedManager].isEnabled) {
+    [[ScheduleManager sharedManager] stopSchedule];
+    [[ScheduleManager sharedManager] startSchedule];
+  }
+}
+
+- (void)startNow {
+  if ([XCTestRunner isRunning]) {
     [self showAlert:@"提示" message:@"自动化已在运行中"];
     return;
   }
 
   UIAlertController *alert = [UIAlertController
       alertControllerWithTitle:@"🚀 启动自动化"
-                       message:@"即将启动 TikTok "
-                               @"自动化\n\n日志保存在:\n/var/mobile/Documents/"
-                               @"app.log"
+                       message:@"即将启动 TikTok 自动化\n\n使用 XCTest "
+                               @"框架进行跨应用控制"
                 preferredStyle:UIAlertControllerStyleAlert];
 
-  [alert addAction:[UIAlertAction
-                       actionWithTitle:@"开始"
-                                 style:UIAlertActionStyleDefault
-                               handler:^(UIAlertAction *_Nonnull action) {
-                                 [[AutomationManager sharedManager]
-                                     startAutomation];
-                                 [self showToast:@"✅ 自动化已启动"];
-                               }]];
+  [alert addAction:[UIAlertAction actionWithTitle:@"开始"
+                                            style:UIAlertActionStyleDefault
+                                          handler:^(UIAlertAction *action) {
+                                            [XCTestRunner startAutomation];
+                                            [self showToast:@"✅ 自动化已启动"];
+                                          }]];
 
   [alert addAction:[UIAlertAction actionWithTitle:@"取消"
                                             style:UIAlertActionStyleCancel
@@ -127,9 +230,8 @@
   [self presentViewController:alert animated:YES completion:nil];
 }
 
-- (void)stopAutomation {
-  NSLog(@"[UI] 用户点击停止");
-  [[AutomationManager sharedManager] stopAutomation];
+- (void)stopNow {
+  [XCTestRunner stopAutomation];
   [self showToast:@"⏹ 自动化已停止"];
 }
 
@@ -146,7 +248,7 @@
 
 - (void)showToast:(NSString *)message {
   UILabel *toast = [[UILabel alloc]
-      initWithFrame:CGRectMake(40, self.view.bounds.size.height - 150,
+      initWithFrame:CGRectMake(40, self.view.bounds.size.height - 120,
                                self.view.bounds.size.width - 80, 50)];
   toast.text = message;
   toast.textAlignment = NSTextAlignmentCenter;
