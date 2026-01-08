@@ -24,7 +24,8 @@ TrollTouchUITests_FILES = TrollTouchUITests/TrollTouchUITests.m
 TrollTouchUITests_INSTALL_PATH = /Applications/TrollTouch.app/PlugIns
 TrollTouchUITests_FRAMEWORKS = XCTest
 TrollTouchUITests_BUNDLE_EXTENSION = xctest
-TrollTouchUITests_CFLAGS = -fobjc-arc
+TrollTouchUITests_CFLAGS = -fobjc-arc -F$(THEOS)/vendor/lib -F$(THEOS)/sdks/iPhoneOS.sdk/System/Library/PrivateFrameworks
+TrollTouchUITests_LDFLAGS = -F$(THEOS)/vendor/lib -F$(THEOS)/sdks/iPhoneOS.sdk/System/Library/PrivateFrameworks
 
 include $(THEOS_MAKE_PATH)/bundle.mk
 
