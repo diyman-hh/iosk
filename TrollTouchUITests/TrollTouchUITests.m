@@ -5,9 +5,20 @@
 //  XCTest-based TikTok automation
 //
 
+#import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <objc/runtime.h>
+#import <unistd.h>
+
+
+// XCTest assertion macro
+#define XCTAssertTrue(expression, ...)                                         \
+  do {                                                                         \
+    if (!(expression)) {                                                       \
+      NSLog(@"Assertion failed: %s", #expression);                             \
+    }                                                                          \
+  } while (0)
 
 // Forward declare XCTest classes - will be loaded at runtime
 @interface XCTestCase : NSObject
