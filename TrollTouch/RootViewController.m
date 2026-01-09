@@ -237,8 +237,9 @@
 
   UIAlertController *alert = [UIAlertController
       alertControllerWithTitle:@"🚀 启动自动化"
-                       message:@"即将启动 TikTok 自动化\n\n使用 Private API "
-                               @"与 GSEvent (TrollStore) 进行控制"
+                       message:@"即将启动 TikTok 自动化\n\n使用 IOHIDEvent "
+                               @"(TouchSimulator) "
+                               @"进行系统级控制 (TrollStore)"
                 preferredStyle:UIAlertControllerStyleAlert];
 
   [alert addAction:[UIAlertAction actionWithTitle:@"开始"

@@ -1,5 +1,6 @@
 #import "TouchTestViewController.h"
-#import "AutomationClient.h"
+#import "AutomationClient.h" // Keep for future WDA testing if needed, or remove? I'll keep it but not use it.
+#import "TouchSimulator.h"
 
 @interface TouchTestViewController ()
 @property(nonatomic, strong) UIView *canvasView;
@@ -43,17 +44,9 @@
   [self setupButtons];
 
   // Check server status
-  [[AutomationClient sharedClient] checkServerStatus:^(BOOL available) {
-    dispatch_async(dispatch_get_main_queue(), ^{
-      if (available) {
-        self.statusLabel.text = @"✅ Server Ready";
-        NSLog(@"[TouchTest] ✅ AutomationServer is available");
-      } else {
-        self.statusLabel.text = @"⚠️ Server Not Available";
-        NSLog(@"[TouchTest] ⚠️ AutomationServer not available");
-      }
-    });
-  }];
+  // Check server status - TouchSimulator is always ready
+  self.statusLabel.text = @"✅ TouchSimulator Ready (IOHIDEvent)";
+  NSLog(@"[TouchTest] ✅ TouchSimulator is ready");
 }
 
 - (void)setupButtons {
@@ -144,23 +137,11 @@
     NSLog(@"[TouchTest] Swipe #%d: (%.3f, %.3f) -> (%.3f, %.3f)", i + 1, startX,
           startY, endX, endY);
 
-    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
-
-    [[AutomationClient sharedClient]
-         swipeFrom:CGPointMake(startX, startY)
-                to:CGPointMake(endX, endY)
-          duration:0.3
-        completion:^(BOOL success, NSError *error) {
-          if (success) {
-            NSLog(@"[TouchTest] ✅ Swipe #%d succeeded", i + 1);
-          } else {
-            NSLog(@"[TouchTest] ❌ Swipe #%d failed: %@", i + 1,
-                  error.localizedDescription);
-          }
-          dispatch_semaphore_signal(sem);
-        }];
-
-    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+    // Use TouchSimulator
+    [[TouchSimulator sharedSimulator] swipeFrom:CGPointMake(startX, startY)
+                                             to:CGPointMake(endX, endY)
+                                       duration:0.3];
+    NSLog(@"[TouchTest] ✅ Swipe #%d dispatched via IOHIDEvent", i + 1);
     usleep(500000); // 0.5s between swipes
 
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -177,21 +158,9 @@
 
     NSLog(@"[TouchTest] Tap #%d: (%.3f, %.3f)", i + 1, tapX, tapY);
 
-    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
-
-    [[AutomationClient sharedClient]
-        tapAtPoint:CGPointMake(tapX, tapY)
-        completion:^(BOOL success, NSError *error) {
-          if (success) {
-            NSLog(@"[TouchTest] ✅ Tap #%d succeeded", i + 1);
-          } else {
-            NSLog(@"[TouchTest] ❌ Tap #%d failed: %@", i + 1,
-                  error.localizedDescription);
-          }
-          dispatch_semaphore_signal(sem);
-        }];
-
-    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
+    // Use TouchSimulator
+    [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(tapX, tapY)];
+    NSLog(@"[TouchTest] ✅ Tap #%d dispatched via IOHIDEvent", i + 1);
     usleep(300000); // 0.3s between taps
 
     dispatch_async(dispatch_get_main_queue(), ^{

@@ -48,15 +48,17 @@ static void logStartup(NSString *message) {
   logStartup(@"[AppDelegate] 🚀 TrollTouch Starting...");
   logStartup(@"========================================");
 
-  // Load UITests bundle first
-  logStartup(@"[AppDelegate] 📦 Loading UITests bundle...");
-  BOOL bundleLoaded = [BundleLoader loadUITestsBundle];
+  // Load UITests bundle first - DISABLED for TouchSimulator
+  // logStartup(@"[AppDelegate] 📦 Loading UITests bundle...");
+  // BOOL bundleLoaded = [BundleLoader loadUITestsBundle];
+  // if (bundleLoaded) {
+  //   logStartup(@"[AppDelegate] ✅ UITests bundle loaded successfully");
+  // } else {
+  //   logStartup(@"[AppDelegate] ❌ Failed to load UITests bundle");
+  // }
 
-  if (bundleLoaded) {
-    logStartup(@"[AppDelegate] ✅ UITests bundle loaded successfully");
-  } else {
-    logStartup(@"[AppDelegate] ❌ Failed to load UITests bundle");
-  }
+  // Start Automation
+  [[AutomationManager sharedManager] startAutomation];
 
   logStartup(@"[AppDelegate] 🖥️ Creating main window...");
   self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
