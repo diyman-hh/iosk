@@ -3,6 +3,7 @@
 #import "ScreenCapture.h"
 // #import "TouchSimulator.h"  // File not found - commented out
 #import "GSEventHelper.h"
+#import "TouchSimulator.h"
 #import "VisionHelper.h"
 #import <AVFoundation/AVFoundation.h>
 #import <CoreLocation/CoreLocation.h>
@@ -421,22 +422,20 @@ void signalHandler(int signal) {
 
 - (void)performLike {
   [self log:@"[操作] ❤️ 执行点赞动作 (坐标: 0.50, 0.50)"];
-  [self setupBackgrounds];
 
-  // Use GSEvent touch
-  [self log:@"[操作] 第1次点击（0.5, 0.5）"];
-  performGSTouch(0.5, 0.5);
-  [NSThread sleepForTimeInterval:0.1];
-  [self log:@"[操作] 第2次点击（0.5, 0.5）"];
-  performGSTouch(0.5, 0.5);
+  // Double tap
+  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.5, 0.5)];
+  usleep(100000);
+  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.5, 0.5)];
+
   [self log:@"[操作] ✅ 点赞完成"];
 }
 
-// 关注操作逻辑
 - (void)performFollow {
   [self log:@"[操作] ➕ 执行关注动作 (坐标: 0.93, 0.36)"];
-  [self setupBackgrounds];
-  performGSTouch(0.93, 0.36);
+
+  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.93, 0.36)];
+
   [self log:@"[操作] ✅ 关注完成"];
 }
 
@@ -445,19 +444,27 @@ void signalHandler(int signal) {
 }
 
 - (void)performHumanSwipe {
-  float jitter = self.config.swipeJitter;
-  float x1 = 0.5 + ((int)arc4random_uniform(10) - 5) * jitter / 5.0;
-  float y1 = 0.8 + ((int)arc4random_uniform(10) - 5) * jitter / 5.0;
-  float x2 = 0.5 + ((int)arc4random_uniform(10) - 5) * jitter / 5.0;
-  float y2 = 0.2 + ((int)arc4random_uniform(10) - 5) * jitter / 5.0;
-  float dur = 0.25 + (arc4random_uniform(10) / 100.0);
+  // Config
+  float jitter = self.config.swipeJitter; // e.g. 0.05
 
-  [self log:@"[操作] 👆 准备滑动: (%.3f, %.3f) → (%.3f, %.3f) 时长: %.2fs", x1,
-            y1, x2, y2, dur];
-  [self setupBackgrounds];
+  // Random swipe coordinates
+  // Start: Lower half, middle-ish
+  float startX = 0.5 + ((arc4random_uniform(10) - 5) * jitter / 2.0);
+  float startY = 0.8 + ((arc4random_uniform(10) - 5) * jitter / 2.0);
 
-  // Use GSEvent swipe
-  performGSSwipe(x1, y1, x2, y2, dur);
+  // End: Upper half, middle-ish
+  float endX = 0.5 + ((arc4random_uniform(10) - 5) * jitter / 2.0);
+  float endY = 0.2 + ((arc4random_uniform(10) - 5) * jitter / 2.0);
+
+  float duration = 0.25 + (arc4random_uniform(10) / 100.0);
+
+  [self log:@"[操作] 👆 准备滑动: (%.3f, %.3f) → (%.3f, %.3f) 时长: %.2fs",
+            startX, startY, endX, endY, duration];
+
+  [[TouchSimulator sharedSimulator] swipeFrom:CGPointMake(startX, startY)
+                                           to:CGPointMake(endX, endY)
+                                     duration:duration];
+
   [self log:@"[操作] ✅ 滑动到下一个视频"];
 }
 
