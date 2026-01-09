@@ -11,6 +11,13 @@ targets:
     platform: iOS
     sources:
       - path: TrollTouch
+    dependencies:
+      # 🔧 嵌入XCTest bundle到PlugIns目录
+      - target: TrollTouchUITests
+        embed: true
+        copyFiles:
+          destination: plugins
+          subpath: ""
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.trolltouch.app
       INFOPLIST_FILE: TrollTouch/Info.plist
@@ -27,19 +34,20 @@ targets:
         - "CoreGraphics"
 
   TrollTouchUITests:
-    type: bundle.ui-testing
+    type: bundle
     platform: iOS
     sources:
       - path: TrollTouchUITests
     dependencies:
-      - target: TrollTouch
       # 🔧 添加XCTest框架链接
       - framework: XCTest.framework
         embed: false
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.trolltouch.app.uitests
       INFOPLIST_FILE: TrollTouchUITests/Info.plist
-      TEST_TARGET_NAME: TrollTouch
+      PRODUCT_NAME: TrollTouchUITests
+      # 🔧 设置为xctest扩展名
+      WRAPPER_EXTENSION: xctest
       IPHONEOS_DEPLOYMENT_TARGET: 14.0
       # 关闭代码签名（GitHub Actions使用ldid手动签名）
       CODE_SIGNING_ALLOWED: NO
