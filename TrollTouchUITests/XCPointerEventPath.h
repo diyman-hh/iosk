@@ -7,7 +7,6 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 
-
 NS_ASSUME_NONNULL_BEGIN
 
 // XCPointerEventPath - Core touch event path API
@@ -45,15 +44,15 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-// XCUIDevice - Device control interface
+/// XCUIDevice - represents the device under test
 @interface XCUIDevice : NSObject
 
-// Get shared device instance
-+ (instancetype)sharedDevice;
+/// Shared device instance (class property in modern XCTest)
+@property(class, readonly) XCUIDevice *sharedDevice;
 
-// Synthesize (execute) an event
+/// Synthesize touch events
 - (void)synthesizeEvent:(XCSynthesizedEventRecord *)event
-             completion:(void (^_Nullable)(NSError *_Nullable error))completion;
+             completion:(void (^)(NSError *_Nullable error))completion;
 
 @end
 
