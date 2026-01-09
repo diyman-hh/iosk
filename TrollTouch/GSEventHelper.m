@@ -91,12 +91,17 @@ void sendGSTouch(float x, float y, int phase) {
 }
 
 void performGSTouch(float x, float y) {
+  printf("[GSEvent] 🖱️ 执行点击: (%.3f, %.3f)\n", x, y);
   sendGSTouch(x, y, 1); // Down
   usleep(50000);
   sendGSTouch(x, y, 6); // Up
+  printf("[GSEvent] ✅ 点击完成\n");
 }
 
 void performGSSwipe(float x1, float y1, float x2, float y2, float duration) {
+  printf("[GSEvent] 👆 执行滑动: (%.3f, %.3f) → (%.3f, %.3f), 时长: %.2fs\n",
+         x1, y1, x2, y2, duration);
+
   sendGSTouch(x1, y1, 1); // Down
   usleep(10000);
 
@@ -113,4 +118,5 @@ void performGSSwipe(float x1, float y1, float x2, float y2, float duration) {
   }
 
   sendGSTouch(x2, y2, 6); // Up
+  printf("[GSEvent] ✅ 滑动完成, 总步数: %d\n", steps);
 }
