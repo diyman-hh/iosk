@@ -10,7 +10,25 @@ targets:
     type: application
     platform: iOS
     sources:
-      - path: TrollTouch
+      - TrollTouch/main.m
+      - TrollTouch/AppDelegate.m
+      - TrollTouch/AppDelegate.h
+      - TrollTouch/RootViewController.m
+      - TrollTouch/RootViewController.h
+      - TrollTouch/XCTestRunner.m
+      - TrollTouch/XCTestRunner.h
+      - TrollTouch/ScheduleManager.m
+      - TrollTouch/ScheduleManager.h
+      - TrollTouch/AutomationManager.m
+      - TrollTouch/AutomationManager.h
+      - TrollTouch/GSEventHelper.m
+      - TrollTouch/GSEventHelper.h
+      - TrollTouch/ScreenCapture.m
+      - TrollTouch/ScreenCapture.h
+      - TrollTouch/VisionHelper.m
+      - TrollTouch/VisionHelper.h
+      - TrollTouch/GSEvent.h
+      - TrollTouch/Info.plist
     dependencies:
       # 🔧 嵌入XCTest bundle到PlugIns目录
       - target: TrollTouchUITests
