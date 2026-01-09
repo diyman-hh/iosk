@@ -13,31 +13,135 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install Dependencies
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode Project
+        run: |
+          xcodegen generate
+          echo "✅ Xcode project generated from project.yml"
+
+      - name: List Generated Project Structure
+        run: |
+          ls -la
+          if [ -f "TrollTouch.xcodeproj/project.pbxproj" ]; then
+            echo "✅ Xcode project exists"
+          else
+            echo "❌ Xcode project not found"
+            exit 1
+          fi
+
+      - name: Build with xcodebuild
+        run: |
+          echo "🔨 Building TrollTouch with xcodebuild..."
+          xcodebuild -project TrollTouch.xcodeproj \
+                     -scheme TrollTouch \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -derivedDataPath ./build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGN_ENTITLEMENTS="" \
+                     PRODUCT_BUNDLE_IDENTIFIER=com.trolltouch.app \
+                     IPHONEOS_DEPLOYMENT_TARGET=14.0 \
+                     | xcpretty || xcodebuild -project TrollTouch.xcodeproj \
+                     -scheme TrollTouch \
+                     -sdk iphoneos \
+                     -configuration Release \
+                     -derivedDataPath ./build \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     CODE_SIGN_ENTITLEMENTS="" \
+                     PRODUCT_BUNDLE_IDENTIFIER=com.trolltouch.app \
+                     IPHONEOS_DEPLOYMENT_TARGET=14.0
+          echo "✅ Build completed"
+
+      - name: Verify Build Output
+        run: |
+          echo "📦 Checking build output..."
+          find ./build -name "TrollTouch.app" -type d
+          APP_PATH=$(find ./build -name "TrollTouch.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ TrollTouch.app not found in build output"
+            exit 1
+          fi
+          echo "✅ App found at: $APP_PATH"
+          
+          # 验证测试bundle是否存在
+          if [ -d "$APP_PATH/PlugIns/TrollTouchUITests.xctest" ]; then
+            echo "✅ XCTest bundle found in app"
+          else
+            echo "❌ XCTest bundle not found"
+            exit 1
+          fi
+          
+          # 检查XCTest框架链接
+          echo "🔍 Checking XCTest framework linkage..."
+          otool -L "$APP_PATH/PlugIns/TrollTouchUITests.xctest/TrollTouchUITests" || true
+
+      - name: Install ldid for Signing
         run: brew install ldid
 
-      - name: Install Theos
+      - name: Sign Binaries with ldid
         run: |
-          git clone --recursive https://github.com/theos/theos.git ~/theos
-          echo "THEOS=~/theos" >> $GITHUB_ENV
+          APP_PATH=$(find ./build -name "TrollTouch.app" -type d | head -n 1)
+          echo "🔏 Signing binaries with ldid..."
           
-      - name: Download iOS SDK
-        run: |
-          rm -rf ~/theos/sdks
-          git clone --depth 1 https://github.com/theos/sdks.git ~/theos/sdks
+          # 签名主应用可执行文件
+          ldid -S "$APP_PATH/TrollTouch"
+          echo "✅ Signed main app"
+          
+          # 签名测试bundle
+          ldid -S "$APP_PATH/PlugIns/TrollTouchUITests.xctest/TrollTouchUITests"
+          echo "✅ Signed XCTest bundle"
 
-      - name: Build IPA
+      - name: Package IPA
         run: |
-          make FINALPACKAGE=1
-          # Manual IPA Packaging
+          APP_PATH=$(find ./build -name "TrollTouch.app" -type d | head -n 1)
+          echo "📦 Packaging IPA..."
+          
+          # 创建Payload目录
           mkdir -p Payload
-          APP_PATH=$(find .theos -type d -name "TrollTouch.app" | head -n 1)
-          cp -r "$APP_PATH" Payload/
+          
+          # 复制app到Payload
+          cp -R "$APP_PATH" Payload/
+          
+          # 确保Info.plist正确
           cp TrollTouch/Info.plist Payload/TrollTouch.app/Info.plist
+          
+          # 打包为IPA
           zip -r TrollTouch.ipa Payload
+          
+          echo "✅ IPA created successfully"
+          ls -lh TrollTouch.ipa
 
-      - name: Upload Artifact
+      - name: Verify IPA Contents
+        run: |
+          echo "🔍 Verifying IPA structure..."
+          unzip -l TrollTouch.ipa
+          
+          echo ""
+          echo "📝 Checking for XCTest bundle..."
+          if unzip -l TrollTouch.ipa | grep -q "TrollTouchUITests.xctest"; then
+            echo "✅ XCTest bundle is included in IPA"
+          else
+            echo "❌ XCTest bundle missing from IPA"
+            exit 1
+          fi
+
+      - name: Upload IPA Artifact
         uses: actions/upload-artifact@v4
         with:
           name: TrollTouch_IPA
           path: TrollTouch.ipa
+          retention-days: 30
+
+      - name: Upload Build Logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build_Logs
+          path: |
+            ./build/Logs
+          retention-days: 7
+

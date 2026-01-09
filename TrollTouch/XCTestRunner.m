@@ -72,6 +72,24 @@ static NSThread *_testThread = nil;
 
     NSLog(@"[XCTestRunner] ✅ Test bundle loaded");
 
+    // 🔧 验证XCTest框架是否已加载
+    NSLog(@"[XCTestRunner] Verifying XCTest framework...");
+    Class testCaseClass = NSClassFromString(@"XCTestCase");
+    Class uiAppClass = NSClassFromString(@"XCUIApplication");
+    Class uiCoordinateClass = NSClassFromString(@"XCUICoordinate");
+    
+    if (testCaseClass && uiAppClass && uiCoordinateClass) {
+      NSLog(@"[XCTestRunner] ✅ XCTest framework IS loaded and ready");
+      NSLog(@"[XCTestRunner]    - XCTestCase: %@", testCaseClass);
+      NSLog(@"[XCTestRunner]    - XCUIApplication: %@", uiAppClass);
+      NSLog(@"[XCTestRunner]    - XCUICoordinate: %@", uiCoordinateClass);
+    } else {
+      NSLog(@"[XCTestRunner] ⚠️ XCTest framework NOT fully loaded:");
+      NSLog(@"[XCTestRunner]    - XCTestCase: %@", testCaseClass ?: @"nil");
+      NSLog(@"[XCTestRunner]    - XCUIApplication: %@", uiAppClass ?: @"nil");
+      NSLog(@"[XCTestRunner]    - XCUICoordinate: %@", uiCoordinateClass ?: @"nil");
+    }
+
     // Get test class using runtime
     Class testClass = NSClassFromString(@"TrollTouchUITests");
     if (!testClass) {

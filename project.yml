@@ -33,9 +33,27 @@ targets:
       - path: TrollTouchUITests
     dependencies:
       - target: TrollTouch
+      # 🔧 添加XCTest框架链接
+      - framework: XCTest.framework
+        embed: false
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.trolltouch.app.uitests
       INFOPLIST_FILE: TrollTouchUITests/Info.plist
       TEST_TARGET_NAME: TrollTouch
+      IPHONEOS_DEPLOYMENT_TARGET: 14.0
+      # 关闭代码签名（GitHub Actions使用ldid手动签名）
+      CODE_SIGNING_ALLOWED: NO
+      CODE_SIGN_IDENTITY: ""
+      CODE_SIGN_ENTITLEMENTS: ""
       # 关闭一些严格的检查，方便旧代码编译
       CLANG_ENABLE_MODULES: YES
+      # 确保链接XCTest框架
+      OTHER_LDFLAGS:
+        - "-framework"
+        - "XCTest"
+        - "-framework"
+        - "Foundation"
+        - "-framework"
+        - "UIKit"
+        - "-framework"
+        - "CoreGraphics"
