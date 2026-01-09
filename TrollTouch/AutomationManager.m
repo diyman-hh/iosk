@@ -27,16 +27,36 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 }
 
 // Log Path Helper - Public Downloads for easy access via Files app / 3uTools
+// Log Path Helper
 NSString *getLogDirectory() {
-  NSString *path = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
   NSFileManager *fm = [NSFileManager defaultManager];
-  if (![fm fileExistsAtPath:path]) {
-    [fm createDirectoryAtPath:path
+
+  // 1. Try public Downloads directory (visible in Files app)
+  NSString *publicPath = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
+  NSError *err = nil;
+  if (![fm fileExistsAtPath:publicPath]) {
+    [fm createDirectoryAtPath:publicPath
+        withIntermediateDirectories:YES
+                         attributes:nil
+                              error:&err];
+  }
+
+  if (!err && [fm isWritableFileAtPath:publicPath]) {
+    return publicPath;
+  }
+
+  // 2. Fallback to App Documents directory
+  NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
+                                                       NSUserDomainMask, YES);
+  NSString *docPath =
+      [paths.firstObject stringByAppendingPathComponent:@"Logs"];
+  if (![fm fileExistsAtPath:docPath]) {
+    [fm createDirectoryAtPath:docPath
         withIntermediateDirectories:YES
                          attributes:nil
                               error:nil];
   }
-  return path;
+  return docPath;
 }
 
 // Crash & Log Handling
@@ -339,22 +359,55 @@ void signalHandler(int signal) {
 
 - (void)launchTikTok {
   [self log:@"[*] 正在启动 TikTok..."];
+
+  BOOL success = NO;
+
+  // Method 1: SpringBoardServices (Private API)
   void *handle = dlopen("/System/Library/PrivateFrameworks/"
                         "SpringBoardServices.framework/SpringBoardServices",
                         RTLD_LAZY);
-  if (!handle)
-    return;
+  if (handle) {
+    SBSLaunchAppFunc sbsFunc =
+        (SBSLaunchAppFunc)dlsym(handle, "SBSLaunchApplicationWithIdentifier");
+    if (sbsFunc) {
+      // Try International TikTok
+      int result = sbsFunc((__bridge CFStringRef)TIKTOK_GLOBAL, false);
+      if (result == 0)
+        success = YES;
 
-  SBSLaunchAppFunc SBSLaunchApplicationWithIdentifier =
-      (SBSLaunchAppFunc)dlsym(handle, "SBSLaunchApplicationWithIdentifier");
-  if (SBSLaunchApplicationWithIdentifier) {
-    SBSLaunchApplicationWithIdentifier((__bridge CFStringRef)TIKTOK_GLOBAL,
-                                       false);
-    [NSThread sleepForTimeInterval:1.0];
-    SBSLaunchApplicationWithIdentifier((__bridge CFStringRef)TIKTOK_CHINA,
-                                       false);
+      [NSThread sleepForTimeInterval:1.0];
+
+      if (!success) {
+        // Try Chinese TikTok (Douyin)
+        result = sbsFunc((__bridge CFStringRef)TIKTOK_CHINA, false);
+        if (result == 0)
+          success = YES;
+      }
+    }
+    dlclose(handle);
   }
-  dlclose(handle);
+
+  // Method 2: URL Scheme (Fallback)
+  if (!success) {
+    [self log:@"[⚠️] SBS启动失败，尝试使用 URL Scheme..."];
+    dispatch_sync(dispatch_get_main_queue(), ^{
+      NSURL *url = [NSURL URLWithString:@"snssdk1233://"]; // TikTok
+      if ([[UIApplication sharedApplication] canOpenURL:url]) {
+        [[UIApplication sharedApplication] openURL:url
+                                           options:@{}
+                                 completionHandler:nil];
+      } else {
+        url = [NSURL URLWithString:@"snssdk1128://"]; // Douyin
+        if ([[UIApplication sharedApplication] canOpenURL:url]) {
+          [[UIApplication sharedApplication] openURL:url
+                                             options:@{}
+                                   completionHandler:nil];
+        } else {
+          [self log:@"[❌] 未检测到 TikTok 或 抖音 安装"];
+        }
+      }
+    });
+  }
 }
 
 - (void)performLike {
