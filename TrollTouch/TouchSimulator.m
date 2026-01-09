@@ -112,8 +112,8 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
       0, // index
       0, // identity
       eventMask,
-      0, // button mask
-      x, y, 0, 0, 0, 0, 0, 0);
+      0,                         // button mask
+      x, y, 0, 0.5, 0, 0, 0, 0); // Pressure = 0.5
 
   if (event) {
     _IOHIDEventSetSenderID(event, 0x000000010000027F);

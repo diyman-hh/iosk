@@ -449,8 +449,10 @@ void signalHandler(int signal) {
 
   // Random swipe coordinates
   // Start: Lower half, middle-ish
-  float startX = 0.5 + ((float)(arc4random() % 10 - 5)) * jitter / 2.0;
-  float startY = 0.8 + ((float)(arc4random() % 10 - 5)) * jitter / 2.0;
+  int rsX = (int)(arc4random() % 10);
+  int rsY = (int)(arc4random() % 10);
+  float startX = 0.5f + ((float)(rsX - 5)) * jitter / 2.0f;
+  float startY = 0.8f + ((float)(rsY - 5)) * jitter / 2.0f;
 
   // End: Upper half, middle-ish
   float endX = 0.5 + ((float)(arc4random() % 10 - 5)) * jitter / 2.0;
