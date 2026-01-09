@@ -212,21 +212,22 @@
 }
 
 - (void)startNow {
-  if ([XCTestRunner isRunning]) {
+  if ([[AutomationManager sharedManager] isRunning]) {
     [self showAlert:@"提示" message:@"自动化已在运行中"];
     return;
   }
 
   UIAlertController *alert = [UIAlertController
       alertControllerWithTitle:@"🚀 启动自动化"
-                       message:@"即将启动 TikTok 自动化\n\n使用 XCTest "
-                               @"框架进行跨应用控制"
+                       message:@"即将启动 TikTok 自动化\n\n使用 Private API "
+                               @"与 GSEvent (TrollStore) 进行控制"
                 preferredStyle:UIAlertControllerStyleAlert];
 
   [alert addAction:[UIAlertAction actionWithTitle:@"开始"
                                             style:UIAlertActionStyleDefault
                                           handler:^(UIAlertAction *action) {
-                                            [XCTestRunner startAutomation];
+                                            [[AutomationManager sharedManager]
+                                                startAutomation];
                                             [self showToast:@"✅ 自动化已启动"];
                                           }]];
 
@@ -238,7 +239,7 @@
 }
 
 - (void)stopNow {
-  [XCTestRunner stopAutomation];
+  [[AutomationManager sharedManager] stopAutomation];
   [self showToast:@"⏹ 自动化已停止"];
 }
 

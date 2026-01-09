@@ -319,6 +319,11 @@ void signalHandler(int signal) {
 
   [self log:@"[*] 自动化服务已启动..."];
 
+  // Start the main loop in a background thread
+  [NSThread detachNewThreadSelector:@selector(automationLoop)
+                           toTarget:self
+                         withObject:nil];
+
   CGRect screenRect = [UIScreen mainScreen].bounds;
   CGFloat scale = [UIScreen mainScreen].scale;
   [self
