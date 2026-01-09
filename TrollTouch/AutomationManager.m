@@ -444,23 +444,18 @@ void signalHandler(int signal) {
 }
 
 - (void)performHumanSwipe {
-  // Config
-  float jitter = self.config.swipeJitter; // e.g. 0.05
+  // Config - FIXED COORDINATES FOR DEBUGGING
+  // This eliminates any calculation errors causing overflow
+  float startX = 0.5f;
+  float startY = 0.8f;
 
-  // Random swipe coordinates
-  // Start: Lower half, middle-ish
-  int rsX = (int)(arc4random() % 10);
-  int rsY = (int)(arc4random() % 10);
-  float startX = 0.5f + ((float)(rsX - 5)) * jitter / 2.0f;
-  float startY = 0.8f + ((float)(rsY - 5)) * jitter / 2.0f;
+  float endX = 0.5f;
+  float endY = 0.2f;
 
-  // End: Upper half, middle-ish
-  float endX = 0.5 + ((float)(arc4random() % 10 - 5)) * jitter / 2.0;
-  float endY = 0.2 + ((float)(arc4random() % 10 - 5)) * jitter / 2.0;
+  float duration = 0.25f;
 
-  float duration = 0.25 + (arc4random() % 10) / 100.0;
-
-  [self log:@"[操作] 👆 准备滑动: (%.3f, %.3f) → (%.3f, %.3f) 时长: %.2fs",
+  [self log:@"[操作] 👆 准备滑动 (FIXED): (%.3f, %.3f) → (%.3f, %.3f) 时长: "
+            @"%.2fs",
             startX, startY, endX, endY, duration];
 
   [[TouchSimulator sharedSimulator] swipeFrom:CGPointMake(startX, startY)
