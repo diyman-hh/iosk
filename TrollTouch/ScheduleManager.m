@@ -25,9 +25,9 @@
 - (instancetype)init {
   self = [super init];
   if (self) {
-    // Default working hours: 9 AM to 6 PM
-    _startHour = 9;
-    _endHour = 18;
+    // Default working hours: 0 - 24 (24/7)
+    _startHour = 0;
+    _endHour = 24;
     _isEnabled = NO;
   }
   return self;

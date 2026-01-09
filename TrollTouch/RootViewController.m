@@ -7,7 +7,6 @@
 #import "ScheduleManager.h"
 #import "XCTestRunner.h"
 
-
 @implementation RootViewController
 
 - (void)viewDidLoad {
@@ -157,10 +156,11 @@
   info.text = @"📱 功能说明\n\n"
               @"✅ 使用 XCTest 框架，真正的跨应用控制\n"
               @"✅ TrollStore 提供永久签名和系统权限\n"
-              @"✅ 支持定时自动运行\n"
-              @"✅ 不会被 TikTok 检测\n\n"
+              @"✅ 支持定时自动运行 (默认为24小时不间断)\n"
+              @"✅ 自动打开TikTok，随机刷视频、点赞、关注\n"
+              @"✅ 日志位置: Downloads/TrollTouch_Logs\n\n"
               @"⚙️ 使用方法\n\n"
-              @"1. 设置工作时间（如 9:00 - 18:00）\n"
+              @"1. 设置工作时间（如 0:00 - 24:00）\n"
               @"2. 启用定时任务开关\n"
               @"3. 应用会在设定时间自动运行\n"
               @"4. 或点击「立即启动」手动开始";
