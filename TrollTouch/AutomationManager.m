@@ -14,7 +14,6 @@
 #import <stdlib.h>
 #import <sys/utsname.h>
 
-
 #define TIKTOK_GLOBAL @"com.zhiliaoapp.musically" // Restored macro
 #define TIKTOK_CHINA @"com.ss.iphone.ugc.Aweme"
 #define TIKTOK_BUNDLE_ID @"com.zhiliaoapp.musically" // Kept for safety
@@ -418,33 +417,33 @@ void signalHandler(int signal) {
 
   // 2. 点击 '上传' (底部右侧)
   [self log:@"[*] 点击 '上传'..."];
-  perform_touch(0.85, 0.85);
+  performGSTouch(0.85, 0.85);
   [NSThread sleepForTimeInterval:2.5];
 
   // 3. 选择第1个视频 (左上角)
   [self log:@"[*] 选择第一个视频..."];
-  perform_touch(0.16, 0.20);
+  performGSTouch(0.16, 0.20);
   [NSThread sleepForTimeInterval:1.5];
 
   // 4. 点击 下一步 (底部右侧)
   [self log:@"[*] 点击 '下一步'..."];
-  perform_touch(0.85, 0.93);
+  performGSTouch(0.85, 0.93);
   [NSThread sleepForTimeInterval:4.0];
 
   // 5. 点击 下一步 (编辑页)
   [self log:@"[*] 点击 '下一步' (编辑页)..."];
-  perform_touch(0.85, 0.93);
+  performGSTouch(0.85, 0.93);
   [NSThread sleepForTimeInterval:3.0];
 
   // 6. 点击 发布
   [self log:@"[*] 点击 '发布' !"];
-  perform_touch(0.85, 0.93);
+  performGSTouch(0.85, 0.93);
   [NSThread sleepForTimeInterval:5.0];
 
   [self log:@"[*] 自动发布完成。"];
 
   // 返回推荐页 (点击左下角首页)
-  perform_touch(0.08, 0.93);
+  performGSTouch(0.08, 0.93);
   [NSThread sleepForTimeInterval:2.0];
 }
 
@@ -505,7 +504,7 @@ void signalHandler(int signal) {
     if (count % 15 == 0) {
       [self log:@"[*] 检查个人主页数据 (OCR)..."];
       // 左滑进入主页
-      perform_swipe(0.8, 0.5, 0.2, 0.5, 0.3);
+      performGSSwipe(0.8, 0.5, 0.2, 0.5, 0.3);
       [NSThread sleepForTimeInterval:2.0];
 
       UIImage *profileImg = captureScreen();
@@ -522,7 +521,7 @@ void signalHandler(int signal) {
       }
       // 右滑返回
       [NSThread sleepForTimeInterval:2.0];
-      perform_swipe(0.2, 0.5, 0.8, 0.5, 0.3);
+      performGSSwipe(0.2, 0.5, 0.8, 0.5, 0.3);
     }
     */
 
