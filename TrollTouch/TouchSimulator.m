@@ -10,15 +10,33 @@ typedef struct __IOHIDEvent *IOHIDEventRef;
 typedef struct __IOHIDEventSystemClient *IOHIDEventSystemClientRef;
 typedef struct __IOHIDServiceClient *IOHIDServiceClientRef;
 
+// Digitizer Transducer Types
+#define kIOHIDDigitizerTransducerTypeStylus 0
+#define kIOHIDDigitizerTransducerTypePuck 1
+#define kIOHIDDigitizerTransducerTypeFinger 2
+
 // Event Types
 #define kIOHIDEventTypeDigitizer 11
 
-// Function pointers
+// Function pointers - CORRECTED
 typedef IOHIDEventSystemClientRef (*IOHIDEventSystemClientCreateFunc)(
     CFAllocatorRef);
 typedef IOHIDEventRef (*IOHIDEventCreateDigitizerEventFunc)(
-    CFAllocatorRef, uint64_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
-    float, float, float, float, float, uint32_t, uint32_t, uint32_t);
+    CFAllocatorRef, // allocator
+    uint64_t,       // timestamp
+    uint32_t,       // transducerType (NOT eventType!)
+    uint32_t,       // index
+    uint32_t,       // identity
+    uint32_t,       // eventMask
+    uint32_t,       // buttonMask
+    float,          // x
+    float,          // y
+    float,          // z
+    float,          // tipPressure
+    float,          // barrelPressure
+    float,          // twist
+    Boolean,        // range
+    Boolean);       // touch
 typedef void (*IOHIDEventSetSenderIDFunc)(IOHIDEventRef, uint64_t);
 typedef void (*IOHIDEventSystemClientDispatchEventFunc)(
     IOHIDEventSystemClientRef, IOHIDEventRef);
@@ -112,6 +130,7 @@ typedef uint64_t (*IOHIDServiceClientGetRegistryIDFunc)(IOHIDServiceClientRef);
     // 1. Activate Client with Match All
     if (_IOHIDEventSystemClientSetMatching) {
       _IOHIDEventSystemClientSetMatching(_client, NULL);
+      NSLog(@"[TouchSimulator] ✅ Client matching activated");
     }
 
     // 2. Find Digitizer Service
@@ -142,10 +161,6 @@ typedef uint64_t (*IOHIDServiceClientGetRegistryIDFunc)(IOHIDServiceClientRef);
             CFRelease(usageNum);
           }
 
-          // Inspecting services
-          // NSLog(@"[TouchSimulator] Service %ld: Page 0x%X Usage 0x%X", i,
-          // usagePage, usage);
-
           // Look for Digitizer (0x0D) & Touch Screen (0x04)
           if (usagePage == 0x0D && usage == 0x04) {
             _digitizerServiceID = _IOHIDServiceClientGetRegistryID(service);
@@ -161,7 +176,7 @@ typedef uint64_t (*IOHIDServiceClientGetRegistryIDFunc)(IOHIDServiceClientRef);
     if (_digitizerServiceID == 0) {
       NSLog(@"[TouchSimulator] ⚠️ Warning: No specific touch service found. "
             @"Using fallback ID.");
-      _digitizerServiceID = 0x000000010000027F; // Fallback
+      _digitizerServiceID = 0x000000010000027F;
     }
 
     NSLog(@"[TouchSimulator] ✅ IOHIDEvent system loaded. SenderID: 0x%llX",
@@ -178,57 +193,65 @@ typedef uint64_t (*IOHIDServiceClientGetRegistryIDFunc)(IOHIDServiceClientRef);
   uint64_t timestamp = mach_absolute_time();
 
   // Type: 1=Down, 2=Move, 3=Up
-  // IOHIDEvent masks
-  uint32_t eventMask = 0;
-  int isTouch = 0;
+  Boolean range =
+      (type != 3); // Range: true when finger is in proximity or touching
+  Boolean touch =
+      (type == 1 || type == 2); // Touch: true when finger is actually down
 
+  // EventMask for compatibility
+  uint32_t eventMask = 0;
   if (type == 1) {                  // Down
     eventMask = 0x01 | 0x02 | 0x04; // Range | Touch | Position
-    isTouch = 1;
-  } else if (type == 2) { // Move
-    eventMask = 0x04;     // Position
-    isTouch = 1;
-  } else if (type == 3) {    // Up
-    eventMask = 0x01 | 0x02; // Range | Touch
-    isTouch = 0;
+  } else if (type == 2) {           // Move
+    eventMask = 0x04;               // Position
+  } else if (type == 3) {           // Up
+    eventMask = 0x01 | 0x02;        // Range | Touch
   }
 
-  // Create base event
+  // CRITICAL FIX: Use correct parameters
   IOHIDEventRef event = _IOHIDEventCreateDigitizerEvent(
-      kCFAllocatorDefault, timestamp, kIOHIDEventTypeDigitizer,
-      0, // index
-      0, // identity
+      kCFAllocatorDefault, timestamp,
+      kIOHIDDigitizerTransducerTypeFinger, // FIX: Use Finger (2), not EventType
+                                           // (11)!
+      0,                                   // index
+      2,                                   // identity (finger ID 2)
       eventMask,
-      0,                         // button mask
-      x, y, 0, 0.5, 0, 0, 0, 0); // Pressure = 0.5 (Fixed)
+      0,       // button mask
+      x, y, 0, // coordinates
+      0.5,     // tipPressure
+      0,       // barrelPressure
+      0,       // twist
+      range,   // FIX: Boolean range
+      touch);  // FIX: Boolean touch
 
   if (event) {
     _IOHIDEventSetSenderID(event, _digitizerServiceID);
 
-    // Critical: manually set fields to ensure properties are correct matching
-    // WDA behavior
+    // Set additional fields for maximum compatibility
     if (_IOHIDEventSetIntegerValue) {
       _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerTouch,
-                                 isTouch);
+                                 touch ? 1 : 0);
       _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerRange,
-                                 1); // Range valid
-      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIndex,
-                                 0); // Finger index 0
-      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIdentity,
-                                 2); // Finger Identity 2
+                                 range ? 1 : 0);
+      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIndex, 0);
+      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIdentity, 2);
       _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerEventMask,
                                  eventMask);
     }
 
     _IOHIDEventSystemClientDispatchEvent(_client, event);
-    CFRelease(event); // Cleanup
+    CFRelease(event);
+
+    NSLog(@"[TouchSimulator] 📤 Event dispatched: type=%d, coords=(%.3f, "
+          @"%.3f), range=%d, touch=%d",
+          type, x, y, range, touch);
   } else {
     NSLog(@"[TouchSimulator] ❌ Failed to create event");
   }
 }
 
 - (void)tapAtPoint:(CGPoint)point {
-  NSLog(@"[TouchSimulator] Tap at %.3f, %.3f", point.x, point.y);
+  NSLog(@"[TouchSimulator] 👆 Tap at %.3f, %.3f", point.x, point.y);
   [self sendTouchEvent:1 x:point.x y:point.y]; // Down
   usleep(50000);                               // 50ms
   [self sendTouchEvent:3 x:point.x y:point.y]; // Up
@@ -237,8 +260,8 @@ typedef uint64_t (*IOHIDServiceClientGetRegistryIDFunc)(IOHIDServiceClientRef);
 - (void)swipeFrom:(CGPoint)start
                to:(CGPoint)end
          duration:(NSTimeInterval)duration {
-  NSLog(@"[TouchSimulator] Swipe from %.3f, %.3f to %.3f, %.3f", start.x,
-        start.y, end.x, end.y);
+  NSLog(@"[TouchSimulator] 👉 Swipe from %.3f, %.3f to %.3f, %.3f (%.2fs)",
+        start.x, start.y, end.x, end.y, duration);
 
   [self sendTouchEvent:1 x:start.x y:start.y]; // Down
   usleep(10000);                               // 10ms hold
@@ -257,6 +280,7 @@ typedef uint64_t (*IOHIDServiceClientGetRegistryIDFunc)(IOHIDServiceClientRef);
   }
 
   [self sendTouchEvent:3 x:end.x y:end.y]; // Up
+  NSLog(@"[TouchSimulator] ✅ Swipe completed");
 }
 
 @end
