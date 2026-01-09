@@ -5,7 +5,9 @@
 
 #import "WDATouchInjector.h"
 #import "XCPointerEventPath.h"
+#import <UIKit/UIKit.h>
 #import <XCTest/XCTest.h>
+
 
 @implementation WDATouchInjector
 
