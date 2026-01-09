@@ -520,27 +520,32 @@ void signalHandler(int signal) {
 
   // 2. 点击 '上传' (底部右侧)
   [self log:@"[*] 点击 '上传'..."];
-  performGSTouch(0.85, 0.85);
+  [[AutomationClient sharedClient] tapAtPoint:CGPointMake(0.85, 0.85)
+                                   completion:nil];
   [NSThread sleepForTimeInterval:2.5];
 
   // 3. 选择第1个视频 (左上角)
   [self log:@"[*] 选择第一个视频..."];
-  performGSTouch(0.16, 0.20);
+  [[AutomationClient sharedClient] tapAtPoint:CGPointMake(0.16, 0.20)
+                                   completion:nil];
   [NSThread sleepForTimeInterval:1.5];
 
   // 4. 点击 下一步 (底部右侧)
   [self log:@"[*] 点击 '下一步'..."];
-  performGSTouch(0.85, 0.93);
+  [[AutomationClient sharedClient] tapAtPoint:CGPointMake(0.85, 0.93)
+                                   completion:nil];
   [NSThread sleepForTimeInterval:4.0];
 
   // 5. 点击 下一步 (编辑页)
   [self log:@"[*] 点击 '下一步' (编辑页)..."];
-  performGSTouch(0.85, 0.93);
+  [[AutomationClient sharedClient] tapAtPoint:CGPointMake(0.85, 0.93)
+                                   completion:nil];
   [NSThread sleepForTimeInterval:3.0];
 
   // 6. 点击 发布
   [self log:@"[*] 点击 '发布' !"];
-  performGSTouch(0.85, 0.93);
+  [[AutomationClient sharedClient] tapAtPoint:CGPointMake(0.85, 0.93)
+                                   completion:nil];
   [NSThread sleepForTimeInterval:5.0];
 
   [self log:@"[*] 自动发布完成。"];
