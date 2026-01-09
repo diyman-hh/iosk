@@ -47,4 +47,12 @@ NS_ASSUME_NONNULL_BEGIN
 /// Forward declaration - XCUIDevice is provided by XCTest framework
 @class XCUIDevice;
 
+/// Category to declare private API method
+@interface XCUIDevice (PrivateAPI)
+
+- (void)synthesizeEvent:(XCSynthesizedEventRecord *)event
+             completion:(void (^)(NSError *_Nullable error))completion;
+
+@end
+
 NS_ASSUME_NONNULL_END
