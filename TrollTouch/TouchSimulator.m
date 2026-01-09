@@ -36,12 +36,29 @@ typedef void (*IOHIDEventSystemClientDispatchEventFunc)(
     IOHIDEventSystemClientRef, IOHIDEventRef);
 typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
 
+// Private IOHIDEvent definitions
+#define kIOHIDEventFieldDigitizerX 720896
+#define kIOHIDEventFieldDigitizerY 720897
+#define kIOHIDEventFieldDigitizerEventMask 720903
+#define kIOHIDEventFieldDigitizerRange 720904
+#define kIOHIDEventFieldDigitizerTouch 720905
+#define kIOHIDEventFieldDigitizerIndex 720901
+#define kIOHIDEventFieldDigitizerIdentity 720902
+
+// Function pointers
+typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef event,
+                                              uint32_t field, int value);
+typedef void (*IOHIDEventSetFloatValueFunc)(IOHIDEventRef event, uint32_t field,
+                                            float value);
+
 @implementation TouchSimulator {
   void *_ioKitHandle;
   IOHIDEventSystemClientCreateFunc _IOHIDEventSystemClientCreate;
   IOHIDEventCreateDigitizerEventFunc _IOHIDEventCreateDigitizerEvent;
   IOHIDEventSetSenderIDFunc _IOHIDEventSetSenderID;
   IOHIDEventSystemClientDispatchEventFunc _IOHIDEventSystemClientDispatchEvent;
+  IOHIDEventSetIntegerValueFunc _IOHIDEventSetIntegerValue;
+
   IOHIDEventSystemClientRef _client;
 }
 
@@ -63,7 +80,6 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
 }
 
 - (void)loadIOKit {
-  // Load IOKit framework dynamically
   _ioKitHandle =
       dlopen("/System/Library/Frameworks/IOKit.framework/IOKit", RTLD_LAZY);
   if (!_ioKitHandle) {
@@ -80,6 +96,8 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
   _IOHIDEventSystemClientDispatchEvent =
       (IOHIDEventSystemClientDispatchEventFunc)dlsym(
           _ioKitHandle, "IOHIDEventSystemClientDispatchEvent");
+  _IOHIDEventSetIntegerValue = (IOHIDEventSetIntegerValueFunc)dlsym(
+      _ioKitHandle, "IOHIDEventSetIntegerValue");
 
   if (_IOHIDEventSystemClientCreate) {
     _client = _IOHIDEventSystemClientCreate(kCFAllocatorDefault);
@@ -91,86 +109,50 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
   if (!_client || !_IOHIDEventCreateDigitizerEvent)
     return;
 
-  // Create timestamp
   uint64_t timestamp = mach_absolute_time();
 
-  // Flags based on action
+  // Type: 1=Down, 2=Move, 3=Up
+  // IOHIDEvent masks
   uint32_t eventMask = 0;
-  uint32_t touchType = 0; // 2 for finger usually?
+  int isTouch = 0;
 
-  // Standard IOHID digitizer flags
-  // 1(Range) | 2(Touch)
-  // Down: 1|2 = 3
-  // Move: 1|2 = 3
-  // Up: 0 = 0 (Actually just Range 1, Touch 0)
-
-  // Let's use simplified flags known to work
-  // 1 = Down (Touch + Range)
-  // 2 = Up (Range only or None)
-  // 4 = Move
-
-  uint32_t flags = 0;
-  if (type == 1) { // Down
-    flags = kDigitizerFingerDown;
-    eventMask = 0x1;      // Down
+  if (type == 1) {                  // Down
+    eventMask = 0x01 | 0x02 | 0x04; // Range | Touch | Position
+    isTouch = 1;
   } else if (type == 2) { // Move
-    flags = kDigitizerFingerMove;
-    eventMask = 0x4; // Move
-  } else {           // Up
-    flags = kDigitizerFingerUp;
-    eventMask = 0x2; // Up
+    eventMask = 0x04;     // Position
+    isTouch = 1;
+  } else if (type == 3) {    // Up
+    eventMask = 0x01 | 0x02; // Range | Touch
+    isTouch = 0;
   }
 
-  // Normally x,y are 0.0-1.0
-  // But check if we need absolute? APIs usually take 0.0-1.0
-
-  // Parameters map:
-  // allocator, timestamp, type(kIOHIDEventTypeDigitizer), index(0),
-  // identity(2), eventMask, buttonMask, x, y, z, tipPressure, barrelPressure,
-  // range, touch, options IOHIDEventCreateDigitizerEvent(alloc, time,
-  // kIOHIDEventTypeDigitizer, TRANS_ID, IDENTITY, MASK, BUTTON, x, y, 0, 0, 0,
-  // 0, 0, 0)
-
-  // Re-verifying signature for CreateDigitizerEvent... it varies by iOS
-  // version. iOS 14+ usually simpler. Let's try the standard known payload.
-
-  // Using a simpler approach: IOHIDEventCreateDigitizerEvent
-  // (allocator, timestamp, transType, identity, eventMask, buttonMask, x, y, z,
-  // pressure, twist, isRange, isTouch, options)
-
-  // Actually, let's use the widely used "SimulateTouch" implementation
-  // reference type: 1=Touch, 2=Untouch, 3=Move
-
-  uint32_t handEventMask = 0;
-  uint32_t handTouchStr = 0;
-
-  if (type == 1) {                      // Down
-    handEventMask = 0x01 | 0x02 | 0x04; // Range | Touch | Position
-    handTouchStr = 1;
-  } else if (type == 2) { // Move
-    handEventMask = 0x04; // Position only update
-    handTouchStr = 1;
-  } else {                       // Up
-    handEventMask = 0x01 | 0x02; // Range | Touch (state change)
-    handTouchStr = 0;            // Lift
-  }
-
+  // Create base event
   IOHIDEventRef event = _IOHIDEventCreateDigitizerEvent(
       kCFAllocatorDefault, timestamp, kIOHIDEventTypeDigitizer,
       0, // index
       0, // identity
-      handEventMask,
-      0,                     // button mask
-      x, y, 0, 0, 0, 0, 0, 0 // x,y,z...
-  );
-
-  // Fix up fields manually closer to real iOS events if needed
-  // But let's try dispatching this.
+      eventMask,
+      0, // button mask
+      x, y, 0, 0, 0, 0, 0, 0);
 
   if (event) {
-    _IOHIDEventSetSenderID(event, 0x0000000123456789); // Fake sender ID
+    _IOHIDEventSetSenderID(event, 0x000000010000027F);
+
+    // Critical: manually set fields to ensure properties are correct
+    if (_IOHIDEventSetIntegerValue) {
+      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerTouch,
+                                 isTouch);
+      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerRange,
+                                 1); // Range is always 1 while active
+      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIndex, 0);
+      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIdentity, 2);
+      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerEventMask,
+                                 eventMask);
+    }
+
     _IOHIDEventSystemClientDispatchEvent(_client, event);
-    CFRelease(event);
+    CFRelease(event); // Cleanup
   }
 }
 

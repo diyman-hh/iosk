@@ -449,14 +449,14 @@ void signalHandler(int signal) {
 
   // Random swipe coordinates
   // Start: Lower half, middle-ish
-  float startX = 0.5 + ((arc4random_uniform(10) - 5) * jitter / 2.0);
-  float startY = 0.8 + ((arc4random_uniform(10) - 5) * jitter / 2.0);
+  float startX = 0.5 + ((float)(arc4random() % 10 - 5)) * jitter / 2.0;
+  float startY = 0.8 + ((float)(arc4random() % 10 - 5)) * jitter / 2.0;
 
   // End: Upper half, middle-ish
-  float endX = 0.5 + ((arc4random_uniform(10) - 5) * jitter / 2.0);
-  float endY = 0.2 + ((arc4random_uniform(10) - 5) * jitter / 2.0);
+  float endX = 0.5 + ((float)(arc4random() % 10 - 5)) * jitter / 2.0;
+  float endY = 0.2 + ((float)(arc4random() % 10 - 5)) * jitter / 2.0;
 
-  float duration = 0.25 + (arc4random_uniform(10) / 100.0);
+  float duration = 0.25 + (arc4random() % 10) / 100.0;
 
   [self log:@"[操作] 👆 准备滑动: (%.3f, %.3f) → (%.3f, %.3f) 时长: %.2fs",
             startX, startY, endX, endY, duration];
