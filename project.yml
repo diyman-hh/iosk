@@ -104,3 +104,5 @@ targets:
         - "UIKit"
         - "-framework"
         - "CoreGraphics"
+        - "-framework"
+        - "CoreGraphics"
