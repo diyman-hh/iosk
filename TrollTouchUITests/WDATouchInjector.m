@@ -8,7 +8,6 @@
 #import <UIKit/UIKit.h>
 #import <XCTest/XCTest.h>
 
-
 @implementation WDATouchInjector
 
 + (instancetype)sharedInjector {
@@ -61,10 +60,10 @@
   // Lift up after 50ms
   [path liftUpAtOffset:0.05];
 
-  // Create event record
+  // Create event record (orientation: 1 = Portrait)
   XCSynthesizedEventRecord *record = [[XCSynthesizedEventRecord alloc]
               initWithName:@"Tap"
-      interfaceOrientation:UIInterfaceOrientationPortrait];
+      interfaceOrientation:1]; // UIInterfaceOrientationPortrait = 1
   [record addPointerEventPath:path];
 
   // Execute
@@ -108,10 +107,10 @@
   // Lift up
   [path liftUpAtOffset:duration + 0.01];
 
-  // Create event record
+  // Create event record (orientation: 1 = Portrait)
   XCSynthesizedEventRecord *record = [[XCSynthesizedEventRecord alloc]
               initWithName:@"Swipe"
-      interfaceOrientation:UIInterfaceOrientationPortrait];
+      interfaceOrientation:1]; // UIInterfaceOrientationPortrait = 1
   [record addPointerEventPath:path];
 
   // Execute
