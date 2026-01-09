@@ -6,6 +6,7 @@
 #import "RootViewController.h"
 #import "AutomationManager.h"
 #import "ScheduleManager.h"
+#import "TouchTestViewController.h"
 
 @implementation RootViewController
 
@@ -145,6 +146,23 @@
                  action:@selector(stopNow)
        forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:stopButton];
+  y += 60;
+
+  // Touch Test button
+  UIButton *testButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  testButton.frame = CGRectMake(40, y, w - 80, 50);
+  [testButton setTitle:@"🎯 Touch Test" forState:UIControlStateNormal];
+  testButton.titleLabel.font = [UIFont boldSystemFontOfSize:18];
+  testButton.backgroundColor = [UIColor colorWithRed:0.5
+                                               green:0.3
+                                                blue:0.9
+                                               alpha:1.0];
+  [testButton setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
+  testButton.layer.cornerRadius = 12;
+  [testButton addTarget:self
+                 action:@selector(openTouchTest)
+       forControlEvents:UIControlEventTouchUpInside];
+  [self.view addSubview:testButton];
   y += 70;
 
   // === 说明区域 ===
@@ -241,6 +259,12 @@
 - (void)stopNow {
   [[AutomationManager sharedManager] stopAutomation];
   [self showToast:@"⏹ 自动化已停止"];
+}
+
+- (void)openTouchTest {
+  TouchTestViewController *testVC = [[TouchTestViewController alloc] init];
+  testVC.modalPresentationStyle = UIModalPresentationFullScreen;
+  [self presentViewController:testVC animated:YES completion:nil];
 }
 
 - (void)showAlert:(NSString *)title message:(NSString *)message {
