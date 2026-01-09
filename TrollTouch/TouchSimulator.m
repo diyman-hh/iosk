@@ -1,11 +1,14 @@
 #import "TouchSimulator.h"
+#import <CoreFoundation/CoreFoundation.h>
 #import <dlfcn.h>
 #import <mach/mach_time.h>
+
 
 // IOHIDEvent Private API Definitions
 
 typedef struct __IOHIDEvent *IOHIDEventRef;
 typedef struct __IOHIDEventSystemClient *IOHIDEventSystemClientRef;
+typedef struct __IOHIDServiceClient *IOHIDServiceClientRef;
 
 // Event Types
 #define kIOHIDEventTypeDigitizer 11
@@ -20,6 +23,13 @@ typedef void (*IOHIDEventSetSenderIDFunc)(IOHIDEventRef, uint64_t);
 typedef void (*IOHIDEventSystemClientDispatchEventFunc)(
     IOHIDEventSystemClientRef, IOHIDEventRef);
 typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
+typedef void (*IOHIDEventSystemClientSetMatchingFunc)(IOHIDEventSystemClientRef,
+                                                      CFDictionaryRef);
+typedef CFArrayRef (*IOHIDEventSystemClientCopyServicesFunc)(
+    IOHIDEventSystemClientRef);
+typedef CFTypeRef (*IOHIDServiceClientCopyPropertyFunc)(IOHIDServiceClientRef,
+                                                        CFStringRef);
+typedef uint64_t (*IOHIDServiceClientGetRegistryIDFunc)(IOHIDServiceClientRef);
 
 // Private IOHIDEvent definitions (Correct usage page shifted values)
 #define kIOHIDEventFieldDigitizerX 720896
@@ -37,10 +47,14 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
   IOHIDEventSetSenderIDFunc _IOHIDEventSetSenderID;
   IOHIDEventSystemClientDispatchEventFunc _IOHIDEventSystemClientDispatchEvent;
   IOHIDEventSetIntegerValueFunc _IOHIDEventSetIntegerValue;
-  void (*_IOHIDEventSystemClientSetMatching)(IOHIDEventSystemClientRef,
-                                             CFDictionaryRef);
+  IOHIDEventSystemClientSetMatchingFunc _IOHIDEventSystemClientSetMatching;
+
+  IOHIDEventSystemClientCopyServicesFunc _IOHIDEventSystemClientCopyServices;
+  IOHIDServiceClientCopyPropertyFunc _IOHIDServiceClientCopyProperty;
+  IOHIDServiceClientGetRegistryIDFunc _IOHIDServiceClientGetRegistryID;
 
   IOHIDEventSystemClientRef _client;
+  uint64_t _digitizerServiceID;
 }
 
 + (instancetype)sharedSimulator {
@@ -55,6 +69,7 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
 - (instancetype)init {
   self = [super init];
   if (self) {
+    _digitizerServiceID = 0;
     [self loadIOKit];
   }
   return self;
@@ -80,23 +95,85 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
   _IOHIDEventSetIntegerValue = (IOHIDEventSetIntegerValueFunc)dlsym(
       _ioKitHandle, "IOHIDEventSetIntegerValue");
   _IOHIDEventSystemClientSetMatching =
-      dlsym(_ioKitHandle, "IOHIDEventSystemClientSetMatching");
+      (IOHIDEventSystemClientSetMatchingFunc)dlsym(
+          _ioKitHandle, "IOHIDEventSystemClientSetMatching");
+
+  _IOHIDEventSystemClientCopyServices =
+      (IOHIDEventSystemClientCopyServicesFunc)dlsym(
+          _ioKitHandle, "IOHIDEventSystemClientCopyServices");
+  _IOHIDServiceClientCopyProperty = (IOHIDServiceClientCopyPropertyFunc)dlsym(
+      _ioKitHandle, "IOHIDServiceClientCopyProperty");
+  _IOHIDServiceClientGetRegistryID = (IOHIDServiceClientGetRegistryIDFunc)dlsym(
+      _ioKitHandle, "IOHIDServiceClientGetRegistryID");
 
   if (_IOHIDEventSystemClientCreate) {
     _client = _IOHIDEventSystemClientCreate(kCFAllocatorDefault);
 
-    // Critical: Match services to activate the client
+    // 1. Activate Client with Match All
     if (_IOHIDEventSystemClientSetMatching) {
       _IOHIDEventSystemClientSetMatching(_client, NULL);
     }
 
-    NSLog(@"[TouchSimulator] ✅ IOHIDEvent system loaded");
+    // 2. Find Digitizer Service
+    if (_IOHIDEventSystemClientCopyServices &&
+        _IOHIDServiceClientCopyProperty && _IOHIDServiceClientGetRegistryID) {
+      CFArrayRef services = _IOHIDEventSystemClientCopyServices(_client);
+      if (services) {
+        NSLog(@"[TouchSimulator] Found %ld services",
+              CFArrayGetCount(services));
+        for (CFIndex i = 0; i < CFArrayGetCount(services); i++) {
+          IOHIDServiceClientRef service =
+              (IOHIDServiceClientRef)CFArrayGetValueAtIndex(services, i);
+          CFNumberRef usagePageNum =
+              (CFNumberRef)_IOHIDServiceClientCopyProperty(
+                  service, CFSTR("PrimaryUsagePage"));
+          CFNumberRef usageNum = (CFNumberRef)_IOHIDServiceClientCopyProperty(
+              service, CFSTR("PrimaryUsage"));
+
+          int usagePage = 0;
+          int usage = 0;
+
+          if (usagePageNum) {
+            CFNumberGetValue(usagePageNum, kCFNumberIntType, &usagePage);
+            CFRelease(usagePageNum);
+          }
+          if (usageNum) {
+            CFNumberGetValue(usageNum, kCFNumberIntType, &usage);
+            CFRelease(usageNum);
+          }
+
+          // Inspecting services
+          // NSLog(@"[TouchSimulator] Service %ld: Page 0x%X Usage 0x%X", i,
+          // usagePage, usage);
+
+          // Look for Digitizer (0x0D) & Touch Screen (0x04)
+          if (usagePage == 0x0D && usage == 0x04) {
+            _digitizerServiceID = _IOHIDServiceClientGetRegistryID(service);
+            NSLog(@"[TouchSimulator] ✅ Found Touch Screen Service! ID: 0x%llX",
+                  _digitizerServiceID);
+            break;
+          }
+        }
+        CFRelease(services);
+      }
+    }
+
+    if (_digitizerServiceID == 0) {
+      NSLog(@"[TouchSimulator] ⚠️ Warning: No specific touch service found. "
+            @"Using fallback ID.");
+      _digitizerServiceID = 0x000000010000027F; // Fallback
+    }
+
+    NSLog(@"[TouchSimulator] ✅ IOHIDEvent system loaded. SenderID: 0x%llX",
+          _digitizerServiceID);
   }
 }
 
 - (void)sendTouchEvent:(int)type x:(float)x y:(float)y {
-  if (!_client || !_IOHIDEventCreateDigitizerEvent)
+  if (!_client || !_IOHIDEventCreateDigitizerEvent) {
+    NSLog(@"[TouchSimulator] ❌ Error: Client not initialized");
     return;
+  }
 
   uint64_t timestamp = mach_absolute_time();
 
@@ -123,25 +200,30 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
       0, // identity
       eventMask,
       0,                         // button mask
-      x, y, 0, 0.5, 0, 0, 0, 0); // Pressure = 0.5
+      x, y, 0, 0.5, 0, 0, 0, 0); // Pressure = 0.5 (Fixed)
 
   if (event) {
-    _IOHIDEventSetSenderID(event, 0x000000010000027F);
+    _IOHIDEventSetSenderID(event, _digitizerServiceID);
 
-    // Critical: manually set fields to ensure properties are correct
+    // Critical: manually set fields to ensure properties are correct matching
+    // WDA behavior
     if (_IOHIDEventSetIntegerValue) {
       _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerTouch,
                                  isTouch);
       _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerRange,
-                                 1); // Range is always 1 while active
-      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIndex, 0);
-      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIdentity, 2);
+                                 1); // Range valid
+      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIndex,
+                                 0); // Finger index 0
+      _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerIdentity,
+                                 2); // Finger Identity 2
       _IOHIDEventSetIntegerValue(event, kIOHIDEventFieldDigitizerEventMask,
                                  eventMask);
     }
 
     _IOHIDEventSystemClientDispatchEvent(_client, event);
     CFRelease(event); // Cleanup
+  } else {
+    NSLog(@"[TouchSimulator] ❌ Failed to create event");
   }
 }
 
@@ -149,9 +231,7 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
   NSLog(@"[TouchSimulator] Tap at %.3f, %.3f", point.x, point.y);
   [self sendTouchEvent:1 x:point.x y:point.y]; // Down
   usleep(50000);                               // 50ms
-  [self sendTouchEvent:3
-                     x:point.x
-                     y:point.y]; // Up (using 3 as 'Up' logic in my helper)
+  [self sendTouchEvent:3 x:point.x y:point.y]; // Up
 }
 
 - (void)swipeFrom:(CGPoint)start
