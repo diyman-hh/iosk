@@ -1,10 +1,10 @@
 #import "AutomationManager.h"
 // #import "BackboardTouchInjector.h"  // File not found - commented out
 #import "ScreenCapture.h"
-// #import "TouchSimulator.h"  // File not found - commented out
+// #import "TouchSimulator.h"  // IOHIDEvent approach doesn't work on iOS 15
 #import "GSEventHelper.h"
-#import "TouchSimulator.h"
 #import "VisionHelper.h"
+#import "XCTestTouchInjector.h" // Using XCTest API like WebDriverAgent
 #import <AVFoundation/AVFoundation.h>
 #import <CoreLocation/CoreLocation.h>
 #import <UIKit/UIKit.h>
@@ -299,7 +299,13 @@ void signalHandler(int signal) {
   [self setupBackgrounds];
 
   // Initialize BackboardServices touch injector
-  [self log:@"[系统] 使用GSEvent触摸注入方法..."];
+  [self log:@"[系统] 初始化XCTest触摸注入..."];
+  BOOL xcInitialized = [[XCTestTouchInjector sharedInjector] initialize];
+  if (xcInitialized) {
+    [self log:@"[系统] ✅ XCTest触摸系统初始化成功"];
+  } else {
+    [self log:@"[系统] ⚠️ XCTest初始化失败"];
+  }
   // BOOL bbInitialized = [[BackboardTouchInjector sharedInjector] initialize];
   // if (bbInitialized) {
   //   [self log:@"[系统] ✅ BackboardServices 初始化成功 - 可以跨应用控制！"];
@@ -370,6 +376,12 @@ void signalHandler(int signal) {
 - (void)launchTikTok {
   [self log:@"[*] 正在启动 TikTok..."];
 
+  // Use XCTest to launch app
+  [[XCTestTouchInjector sharedInjector] launchApp:TIKTOK_GLOBAL];
+  [NSThread sleepForTimeInterval:5.0]; // Wait for app to fully launch
+  return;
+
+  // Old method (fallback)
   BOOL success = NO;
 
   // Method 1: SpringBoardServices (Private API)
@@ -423,10 +435,12 @@ void signalHandler(int signal) {
 - (void)performLike {
   [self log:@"[操作] ❤️ 执行点赞动作 (坐标: 0.50, 0.50)"];
 
-  // Double tap
-  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.5, 0.5)];
+  // Double tap using XCTest
+  [[XCTestTouchInjector sharedInjector]
+      tapAtNormalizedPoint:CGPointMake(0.5, 0.5)];
   usleep(100000);
-  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.5, 0.5)];
+  [[XCTestTouchInjector sharedInjector]
+      tapAtNormalizedPoint:CGPointMake(0.5, 0.5)];
 
   [self log:@"[操作] ✅ 点赞完成"];
 }
@@ -434,7 +448,8 @@ void signalHandler(int signal) {
 - (void)performFollow {
   [self log:@"[操作] ➕ 执行关注动作 (坐标: 0.93, 0.36)"];
 
-  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.93, 0.36)];
+  [[XCTestTouchInjector sharedInjector]
+      tapAtNormalizedPoint:CGPointMake(0.93, 0.36)];
 
   [self log:@"[操作] ✅ 关注完成"];
 }
