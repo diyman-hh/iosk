@@ -27,7 +27,7 @@ targets:
         - "CoreGraphics"
 
   TrollTouchUITests:
-    type: ui-test-bundle
+    type: bundle.ui-testing
     platform: iOS
     sources:
       - path: TrollTouchUITests
