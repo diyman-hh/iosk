@@ -1,5 +1,5 @@
 #import "TouchTestViewController.h"
-#import "TouchSimulator.h"
+#import "AutomationClient.h"
 
 @interface TouchTestViewController ()
 @property(nonatomic, strong) UIView *canvasView;
@@ -36,11 +36,24 @@
   self.statusLabel.textAlignment = NSTextAlignmentCenter;
   self.statusLabel.font = [UIFont boldSystemFontOfSize:16];
   self.statusLabel.textColor = [UIColor blueColor];
-  self.statusLabel.text = @"Ready for Test";
+  self.statusLabel.text = @"Ready for WebDriverAgent Test";
   [self.view addSubview:self.statusLabel];
 
   // Buttons
   [self setupButtons];
+
+  // Check server status
+  [[AutomationClient sharedClient] checkServerStatus:^(BOOL available) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (available) {
+        self.statusLabel.text = @"✅ Server Ready";
+        NSLog(@"[TouchTest] ✅ AutomationServer is available");
+      } else {
+        self.statusLabel.text = @"⚠️ Server Not Available";
+        NSLog(@"[TouchTest] ⚠️ AutomationServer not available");
+      }
+    });
+  }];
 }
 
 - (void)setupButtons {
@@ -107,12 +120,12 @@
 }
 
 - (void)startAutoTest {
-  self.statusLabel.text = @"Testing... Please Wait";
-  NSLog(@"[TouchTest] ========== AUTO TEST STARTED ==========");
+  self.statusLabel.text = @"Testing via WebDriverAgent...";
+  NSLog(@"[TouchTest] ========== WEBDRIVERAGENT TEST STARTED ==========");
 
   [self clearCanvas];
 
-  // Run test in background to avoid blocking UI
+  // Run test in background
   dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
                  ^{
                    [self runAutoTest];
@@ -120,13 +133,10 @@
 }
 
 - (void)runAutoTest {
-  CGFloat width = self.view.bounds.size.width;
-  CGFloat height = self.view.bounds.size.height;
-
-  // Test 10 random swipes
-  NSLog(@"[TouchTest] --- Testing 10 Random Swipes ---");
-  for (int i = 0; i < 10; i++) {
-    float startX = 0.2 + (arc4random() % 60) / 100.0; // 0.2 - 0.8
+  // Test 5 random swipes via AutomationClient
+  NSLog(@"[TouchTest] --- Testing 5 Swipes via AutomationClient ---");
+  for (int i = 0; i < 5; i++) {
+    float startX = 0.2 + (arc4random() % 60) / 100.0;
     float startY = 0.2 + (arc4random() % 60) / 100.0;
     float endX = 0.2 + (arc4random() % 60) / 100.0;
     float endY = 0.2 + (arc4random() % 60) / 100.0;
@@ -134,39 +144,65 @@
     NSLog(@"[TouchTest] Swipe #%d: (%.3f, %.3f) -> (%.3f, %.3f)", i + 1, startX,
           startY, endX, endY);
 
-    [[TouchSimulator sharedSimulator] swipeFrom:CGPointMake(startX, startY)
-                                             to:CGPointMake(endX, endY)
-                                       duration:0.3];
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
+    [[AutomationClient sharedClient]
+         swipeFrom:CGPointMake(startX, startY)
+                to:CGPointMake(endX, endY)
+          duration:0.3
+        completion:^(BOOL success, NSError *error) {
+          if (success) {
+            NSLog(@"[TouchTest] ✅ Swipe #%d succeeded", i + 1);
+          } else {
+            NSLog(@"[TouchTest] ❌ Swipe #%d failed: %@", i + 1,
+                  error.localizedDescription);
+          }
+          dispatch_semaphore_signal(sem);
+        }];
+
+    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
     usleep(500000); // 0.5s between swipes
 
     dispatch_async(dispatch_get_main_queue(), ^{
       self.statusLabel.text =
-          [NSString stringWithFormat:@"Swipe Test %d/10", i + 1];
+          [NSString stringWithFormat:@"Swipe Test %d/5", i + 1];
     });
   }
 
-  // Test 10 random taps
-  NSLog(@"[TouchTest] --- Testing 10 Random Taps ---");
-  for (int i = 0; i < 10; i++) {
+  // Test 5 random taps via AutomationClient
+  NSLog(@"[TouchTest] --- Testing 5 Taps via AutomationClient ---");
+  for (int i = 0; i < 5; i++) {
     float tapX = 0.2 + (arc4random() % 60) / 100.0;
     float tapY = 0.2 + (arc4random() % 60) / 100.0;
 
     NSLog(@"[TouchTest] Tap #%d: (%.3f, %.3f)", i + 1, tapX, tapY);
 
-    [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(tapX, tapY)];
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
+    [[AutomationClient sharedClient]
+        tapAtPoint:CGPointMake(tapX, tapY)
+        completion:^(BOOL success, NSError *error) {
+          if (success) {
+            NSLog(@"[TouchTest] ✅ Tap #%d succeeded", i + 1);
+          } else {
+            NSLog(@"[TouchTest] ❌ Tap #%d failed: %@", i + 1,
+                  error.localizedDescription);
+          }
+          dispatch_semaphore_signal(sem);
+        }];
+
+    dispatch_semaphore_wait(sem, DISPATCH_TIME_FOREVER);
     usleep(300000); // 0.3s between taps
 
     dispatch_async(dispatch_get_main_queue(), ^{
       self.statusLabel.text =
-          [NSString stringWithFormat:@"Tap Test %d/10", i + 1];
+          [NSString stringWithFormat:@"Tap Test %d/5", i + 1];
     });
   }
 
   dispatch_async(dispatch_get_main_queue(), ^{
-    self.statusLabel.text = @"Test Completed! Check logs & canvas";
-    NSLog(@"[TouchTest] ========== AUTO TEST COMPLETED ==========");
+    self.statusLabel.text = @"Test Completed! Check logs";
+    NSLog(@"[TouchTest] ========== WEBDRIVERAGENT TEST COMPLETED ==========");
   });
 }
 
