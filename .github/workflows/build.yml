@@ -98,6 +98,36 @@ jobs:
           echo "✅ XCTest bundle copied to PlugIns directory"
           ls -la "$APP_PATH/PlugIns/"
 
+      - name: Embed XCTest.framework
+        run: |
+          APP_PATH=$(find ./build -name "TrollTouch.app" -type d | head -n 1)
+          echo "📦 Embedding XCTest.framework into app bundle..."
+          
+          # Create Frameworks directory
+          mkdir -p "$APP_PATH/Frameworks"
+          
+          # Copy XCTest.framework from Xcode
+          XCTEST_PATH="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/Library/Frameworks/XCTest.framework"
+          
+          if [ -d "$XCTEST_PATH" ]; then
+            cp -R "$XCTEST_PATH" "$APP_PATH/Frameworks/"
+            echo "✅ XCTest.framework copied to Frameworks directory"
+            ls -la "$APP_PATH/Frameworks/"
+          else
+            echo "❌ XCTest.framework not found at $XCTEST_PATH"
+            exit 1
+          fi
+          
+          # Fix rpath for UITests bundle to find XCTest.framework
+          echo "🔧 Fixing rpath for UITests bundle..."
+          install_name_tool -add_rpath @executable_path/Frameworks \
+            "$APP_PATH/PlugIns/TrollTouchUITests.xctest/TrollTouchUITests" || true
+          
+          install_name_tool -add_rpath @executable_path/../Frameworks \
+            "$APP_PATH/PlugIns/TrollTouchUITests.xctest/TrollTouchUITests" || true
+          
+          echo "✅ XCTest.framework embedded successfully"
+
       - name: Verify Build Output
         run: |
           echo "📦 Checking build output..."
