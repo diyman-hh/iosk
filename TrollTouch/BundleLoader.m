@@ -46,10 +46,49 @@ static void logToFile(NSString *message) {
 + (BOOL)loadUITestsBundle {
   logToFile(@"[BundleLoader] 🔍 Attempting to load UITests bundle...");
 
+  NSString *mainBundlePath = [[NSBundle mainBundle] bundlePath];
+  NSFileManager *fm = [NSFileManager defaultManager];
+
+  // List what's actually in the app bundle
+  logToFile([NSString
+      stringWithFormat:@"[BundleLoader] 📂 Main bundle: %@", mainBundlePath]);
+
+  NSArray *bundleContents = [fm contentsOfDirectoryAtPath:mainBundlePath
+                                                    error:nil];
+  logToFile(
+      [NSString stringWithFormat:@"[BundleLoader] 📋 Bundle root contains: %@",
+                                 bundleContents]);
+
+  // Check Frameworks directory
+  NSString *frameworksPath =
+      [mainBundlePath stringByAppendingPathComponent:@"Frameworks"];
+  if ([fm fileExistsAtPath:frameworksPath]) {
+    NSArray *frameworks = [fm contentsOfDirectoryAtPath:frameworksPath
+                                                  error:nil];
+    logToFile([NSString
+        stringWithFormat:@"[BundleLoader] 📦 Frameworks (%lu items): %@",
+                         (unsigned long)frameworks.count, frameworks]);
+  } else {
+    logToFile(@"[BundleLoader] ❌ Frameworks directory does NOT exist!");
+  }
+
+  // Check PrivateFrameworks directory
+  NSString *privateFrameworksPath =
+      [mainBundlePath stringByAppendingPathComponent:@"PrivateFrameworks"];
+  if ([fm fileExistsAtPath:privateFrameworksPath]) {
+    NSArray *privateFrameworks =
+        [fm contentsOfDirectoryAtPath:privateFrameworksPath error:nil];
+    logToFile([NSString
+        stringWithFormat:@"[BundleLoader] 🔒 PrivateFrameworks (%lu items): %@",
+                         (unsigned long)privateFrameworks.count,
+                         privateFrameworks]);
+  } else {
+    logToFile(@"[BundleLoader] ❌ PrivateFrameworks directory does NOT exist!");
+  }
+
   // Try to preload XCTest.framework using dlopen
   logToFile(@"[BundleLoader] 🔧 Attempting to preload XCTest.framework...");
 
-  NSString *mainBundlePath = [[NSBundle mainBundle] bundlePath];
   NSString *xctestFrameworkPath = [mainBundlePath
       stringByAppendingPathComponent:@"Frameworks/XCTest.framework/XCTest"];
 
