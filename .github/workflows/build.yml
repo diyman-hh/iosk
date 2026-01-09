@@ -56,6 +56,36 @@ jobs:
                      IPHONEOS_DEPLOYMENT_TARGET=14.0
           echo "✅ Build completed"
 
+      - name: Copy XCTest Bundle to PlugIns
+        run: |
+          echo "📦 Manually copying XCTest bundle to PlugIns directory..."
+          
+          # Find the built app and test bundle
+          APP_PATH=$(find ./build -name "TrollTouch.app" -type d | head -n 1)
+          TEST_BUNDLE_PATH=$(find ./build -name "TrollTouchUITests.xctest" -type d | head -n 1)
+          
+          if [ -z "$APP_PATH" ]; then
+            echo "❌ TrollTouch.app not found"
+            exit 1
+          fi
+          
+          if [ -z "$TEST_BUNDLE_PATH" ]; then
+            echo "❌ TrollTouchUITests.xctest not found"
+            exit 1
+          fi
+          
+          echo "App path: $APP_PATH"
+          echo "Test bundle path: $TEST_BUNDLE_PATH"
+          
+          # Create PlugIns directory
+          mkdir -p "$APP_PATH/PlugIns"
+          
+          # Copy test bundle
+          cp -R "$TEST_BUNDLE_PATH" "$APP_PATH/PlugIns/"
+          
+          echo "✅ XCTest bundle copied to PlugIns directory"
+          ls -la "$APP_PATH/PlugIns/"
+
       - name: Verify Build Output
         run: |
           echo "📦 Checking build output..."
