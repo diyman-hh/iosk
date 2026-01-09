@@ -6,11 +6,10 @@
 #import "BundleLoader.h"
 #import <dlfcn.h>
 
-// Helper function to write logs to file
+// Helper function to write logs to file (shared with AppDelegate)
 static void logToFile(NSString *message) {
   NSString *logDir = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
-  NSString *logPath =
-      [logDir stringByAppendingPathComponent:@"bundle_loader.log"];
+  NSString *logPath = [logDir stringByAppendingPathComponent:@"startup.log"];
 
   // Create directory if needed
   [[NSFileManager defaultManager] createDirectoryAtPath:logDir
@@ -61,6 +60,20 @@ static void logToFile(NSString *message) {
   // Check if bundle exists
   if (![[NSFileManager defaultManager] fileExistsAtPath:uiTestsBundlePath]) {
     logToFile(@"[BundleLoader] ❌ UITests bundle not found at path");
+
+    // List what's actually in PlugIns directory
+    NSArray *plugInContents =
+        [[NSFileManager defaultManager] contentsOfDirectoryAtPath:plugInsPath
+                                                            error:nil];
+    if (plugInContents) {
+      logToFile([NSString
+          stringWithFormat:@"[BundleLoader] 📋 PlugIns directory contains: %@",
+                           plugInContents]);
+    } else {
+      logToFile(
+          @"[BundleLoader] ⚠️ PlugIns directory does not exist or is empty");
+    }
+
     return NO;
   }
 
