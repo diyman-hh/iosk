@@ -34,11 +34,15 @@ targets:
       - target: TrollTouchUITests
         embed: true
     settings:
+      PRODUCT_NAME: TrollTouch
       PRODUCT_BUNDLE_IDENTIFIER: com.trolltouch.app
       INFOPLIST_FILE: TrollTouch/Info.plist
       IPHONEOS_DEPLOYMENT_TARGET: 14.0
       TARGETED_DEVICE_FAMILY: "1,2" # iPhone and iPad
       ENABLE_BITCODE: NO
+      # 关闭代码签名
+      CODE_SIGNING_ALLOWED: NO
+      CODE_SIGN_IDENTITY: ""
       # 链接必要的系统库
       OTHER_LDFLAGS: 
         - "-framework"
