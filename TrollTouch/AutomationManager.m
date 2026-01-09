@@ -89,8 +89,8 @@ void signalHandler(int signal) {
     signal(SIGILL, signalHandler);
 
     shared = [[AutomationManager alloc] init];
-    shared.config = (TrollConfig){.startHour = 9,
-                                  .endHour = 23,
+    shared.config = (TrollConfig){.startHour = 0, // 24小时运行：0点开始
+                                  .endHour = 24, // 24小时运行：24点结束（全天）
                                   .minWatchSec = 3,
                                   .maxWatchSec = 8,
                                   .swipeJitter = 0.05,
