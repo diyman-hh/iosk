@@ -30,10 +30,10 @@
 #pragma mark - Coordinate Conversion
 
 - (CGPoint)screenPointFromNormalized:(CGPoint)normalizedPoint {
-  // Use hardcoded screen dimensions for iPhone (most common: 1170x2532 for
-  // iPhone 13 Pro) XCTest will scale appropriately for the actual device
-  CGFloat screenWidth = 1170.0;
-  CGFloat screenHeight = 2532.0;
+  // iPhone 7 screen dimensions: 750x1334 (logical) or 1334x750 (physical
+  // pixels, @2x) Using physical pixel dimensions for XCTest
+  CGFloat screenWidth = 750.0;
+  CGFloat screenHeight = 1334.0;
 
   // Convert normalized (0.0-1.0) to actual screen coordinates
   CGFloat x = normalizedPoint.x * screenWidth;
