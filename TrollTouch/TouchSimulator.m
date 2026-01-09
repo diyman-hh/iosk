@@ -37,6 +37,8 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
   IOHIDEventSetSenderIDFunc _IOHIDEventSetSenderID;
   IOHIDEventSystemClientDispatchEventFunc _IOHIDEventSystemClientDispatchEvent;
   IOHIDEventSetIntegerValueFunc _IOHIDEventSetIntegerValue;
+  void (*_IOHIDEventSystemClientSetMatching)(IOHIDEventSystemClientRef,
+                                             CFDictionaryRef);
 
   IOHIDEventSystemClientRef _client;
 }
@@ -77,9 +79,17 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
           _ioKitHandle, "IOHIDEventSystemClientDispatchEvent");
   _IOHIDEventSetIntegerValue = (IOHIDEventSetIntegerValueFunc)dlsym(
       _ioKitHandle, "IOHIDEventSetIntegerValue");
+  _IOHIDEventSystemClientSetMatching =
+      dlsym(_ioKitHandle, "IOHIDEventSystemClientSetMatching");
 
   if (_IOHIDEventSystemClientCreate) {
     _client = _IOHIDEventSystemClientCreate(kCFAllocatorDefault);
+
+    // Critical: Match services to activate the client
+    if (_IOHIDEventSystemClientSetMatching) {
+      _IOHIDEventSystemClientSetMatching(_client, NULL);
+    }
+
     NSLog(@"[TouchSimulator] ✅ IOHIDEvent system loaded");
   }
 }
