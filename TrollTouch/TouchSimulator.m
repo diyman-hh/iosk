@@ -10,22 +10,7 @@ typedef struct __IOHIDEventSystemClient *IOHIDEventSystemClientRef;
 // Event Types
 #define kIOHIDEventTypeDigitizer 11
 
-// Event Fields (Accessors)
-#define kIOHIDEventFieldDigitizerTouch 0
-#define kIOHIDEventFieldDigitizerIndex 3
-#define kIOHIDEventFieldDigitizerIdentity 4
-#define kIOHIDEventFieldDigitizerEventMask 7
-
-// Detailed Digitizer Event constants
-// kIOHIDDigitizerEventRange | kIOHIDDigitizerEventTouch |
-// kIOHIDDigitizerEventIdentity
-#define kDigitizerFingerDown (0x00000001 | 0x00000002 | 0x00000020)
-#define kDigitizerFingerMove                                                   \
-  (0x00000001 | 0x00000002 | 0x00000020 | 0x00000004) // + Position
-#define kDigitizerFingerUp                                                     \
-  (0x00000001 | 0x00000002 | 0x00000020 | 0x00000002) // + Range/Touch off
-
-// Private Function Types
+// Function pointers
 typedef IOHIDEventSystemClientRef (*IOHIDEventSystemClientCreateFunc)(
     CFAllocatorRef);
 typedef IOHIDEventRef (*IOHIDEventCreateDigitizerEventFunc)(
@@ -36,7 +21,7 @@ typedef void (*IOHIDEventSystemClientDispatchEventFunc)(
     IOHIDEventSystemClientRef, IOHIDEventRef);
 typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
 
-// Private IOHIDEvent definitions
+// Private IOHIDEvent definitions (Correct usage page shifted values)
 #define kIOHIDEventFieldDigitizerX 720896
 #define kIOHIDEventFieldDigitizerY 720897
 #define kIOHIDEventFieldDigitizerEventMask 720903
@@ -44,12 +29,6 @@ typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef, uint32_t, int64_t);
 #define kIOHIDEventFieldDigitizerTouch 720905
 #define kIOHIDEventFieldDigitizerIndex 720901
 #define kIOHIDEventFieldDigitizerIdentity 720902
-
-// Function pointers
-typedef void (*IOHIDEventSetIntegerValueFunc)(IOHIDEventRef event,
-                                              uint32_t field, int value);
-typedef void (*IOHIDEventSetFloatValueFunc)(IOHIDEventRef event, uint32_t field,
-                                            float value);
 
 @implementation TouchSimulator {
   void *_ioKitHandle;
