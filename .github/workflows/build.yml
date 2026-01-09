@@ -103,48 +103,38 @@ jobs:
           APP_PATH=$(find ./build -name "TrollTouch.app" -type d | head -n 1)
           echo "📦 Embedding XCTest.framework and dependencies into app bundle..."
           
-          # Create Frameworks directory
+          # Create Frameworks and PrivateFrameworks directories
           mkdir -p "$APP_PATH/Frameworks"
+          mkdir -p "$APP_PATH/PrivateFrameworks"
           
           # Define base path for Xcode frameworks
           XCODE_FRAMEWORKS="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/Library"
           XCODE_PRIVATE_FRAMEWORKS="$XCODE_FRAMEWORKS/PrivateFrameworks"
           
-          # Copy XCTest.framework
+          # Copy XCTest.framework (public framework)
           if [ -d "$XCODE_FRAMEWORKS/Frameworks/XCTest.framework" ]; then
             cp -R "$XCODE_FRAMEWORKS/Frameworks/XCTest.framework" "$APP_PATH/Frameworks/"
-            echo "✅ XCTest.framework copied"
+            echo "✅ XCTest.framework copied to Frameworks"
           else
             echo "❌ XCTest.framework not found"
             exit 1
           fi
           
-          # Copy XCTestCore.framework (required by XCTest)
-          if [ -d "$XCODE_PRIVATE_FRAMEWORKS/XCTestCore.framework" ]; then
-            cp -R "$XCODE_PRIVATE_FRAMEWORKS/XCTestCore.framework" "$APP_PATH/Frameworks/"
-            echo "✅ XCTestCore.framework copied"
-          else
-            echo "⚠️ XCTestCore.framework not found, trying alternative location..."
-            # Try PrivateFrameworks in app bundle
-            mkdir -p "$APP_PATH/PrivateFrameworks"
-            if [ -d "$XCODE_PRIVATE_FRAMEWORKS/XCTestCore.framework" ]; then
-              cp -R "$XCODE_PRIVATE_FRAMEWORKS/XCTestCore.framework" "$APP_PATH/PrivateFrameworks/"
-              echo "✅ XCTestCore.framework copied to PrivateFrameworks"
-            fi
-          fi
-          
-          # Copy other potential dependencies
-          for framework in "XCUIAutomation" "XCUnit" "XCTAutomationSupport"; do
+          # Copy private frameworks to PrivateFrameworks directory
+          for framework in "XCTestCore" "XCUIAutomation" "XCUnit" "XCTAutomationSupport"; do
             if [ -d "$XCODE_PRIVATE_FRAMEWORKS/${framework}.framework" ]; then
-              cp -R "$XCODE_PRIVATE_FRAMEWORKS/${framework}.framework" "$APP_PATH/Frameworks/" 2>/dev/null || \
-              cp -R "$XCODE_PRIVATE_FRAMEWORKS/${framework}.framework" "$APP_PATH/PrivateFrameworks/" 2>/dev/null || true
-              echo "✅ ${framework}.framework copied"
+              cp -R "$XCODE_PRIVATE_FRAMEWORKS/${framework}.framework" "$APP_PATH/PrivateFrameworks/"
+              echo "✅ ${framework}.framework copied to PrivateFrameworks"
+            else
+              echo "⚠️ ${framework}.framework not found"
             fi
           done
           
-          echo "📋 Frameworks directory contents:"
+          echo "📋 Directory contents:"
+          echo "Frameworks:"
           ls -la "$APP_PATH/Frameworks/" || true
-          ls -la "$APP_PATH/PrivateFrameworks/" 2>/dev/null || true
+          echo "PrivateFrameworks:"
+          ls -la "$APP_PATH/PrivateFrameworks/" || true
           
           # Fix rpath for UITests bundle to find frameworks
           echo "🔧 Fixing rpath for UITests bundle..."
