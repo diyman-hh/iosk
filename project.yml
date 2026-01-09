@@ -63,8 +63,6 @@ targets:
         - "AVFoundation"
         - "-framework"
         - "UserNotifications"
-        - "-framework"
-        - "XCTest"
 
   TrollTouchUITests:
     type: bundle
