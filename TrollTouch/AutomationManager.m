@@ -137,6 +137,10 @@ void signalHandler(int signal) {
       self.logHandler(msg);
     });
   }
+
+  // Broadcast to RootViewController
+  [[NSNotificationCenter defaultCenter] postNotificationName:@"LogNotification"
+                                                      object:msg];
 }
 
 - (void)setupNotifications {

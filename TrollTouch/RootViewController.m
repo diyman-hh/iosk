@@ -148,23 +148,30 @@
   y += 70;
 
   // === 说明区域 ===
-  UITextView *info =
-      [[UITextView alloc] initWithFrame:CGRectMake(20, y, w - 40, 180)];
-  info.editable = NO;
-  info.font = [UIFont systemFontOfSize:13];
-  info.backgroundColor = [UIColor clearColor];
-  info.text = @"📱 功能说明\n\n"
-              @"✅ 使用 XCTest 框架，真正的跨应用控制\n"
-              @"✅ TrollStore 提供永久签名和系统权限\n"
-              @"✅ 支持定时自动运行 (默认为24小时不间断)\n"
-              @"✅ 自动打开TikTok，随机刷视频、点赞、关注\n"
-              @"✅ 日志位置: Downloads/TrollTouch_Logs\n\n"
-              @"⚙️ 使用方法\n\n"
-              @"1. 设置工作时间（如 0:00 - 24:00）\n"
-              @"2. 启用定时任务开关\n"
-              @"3. 应用会在设定时间自动运行\n"
-              @"4. 或点击「立即启动」手动开始";
-  [self.view addSubview:info];
+  // === 日志显示区域 (替代说明文字) ===
+  UILabel *logLabel =
+      [[UILabel alloc] initWithFrame:CGRectMake(20, y, w - 40, 20)];
+  logLabel.text = @"📝 运行日志:";
+  logLabel.font = [UIFont boldSystemFontOfSize:14];
+  [self.view addSubview:logLabel];
+  y += 25;
+
+  self.logTextView =
+      [[UITextView alloc] initWithFrame:CGRectMake(20, y, w - 40, 160)];
+  self.logTextView.editable = NO;
+  self.logTextView.font = [UIFont fontWithName:@"Menlo-Regular"
+                                          size:10]; // Monospace font
+  self.logTextView.backgroundColor = [UIColor blackColor];
+  self.logTextView.textColor = [UIColor greenColor];
+  self.logTextView.layer.cornerRadius = 8;
+  self.logTextView.text = @"[System] Ready. Waiting for commands...\n";
+  [self.view addSubview:self.logTextView];
+
+  // Expose to AutomationManager via notification or singleton (simplified here)
+  [[NSNotificationCenter defaultCenter] addObserver:self
+                                           selector:@selector(appendLog:)
+                                               name:@"LogNotification"
+                                             object:nil];
 }
 
 - (void)scheduleToggled:(UISwitch *)sender {
@@ -275,6 +282,20 @@
               [toast removeFromSuperview];
             }];
       }];
+}
+
+- (void)appendLog:(NSNotification *)note {
+  NSString *msg = note.object;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self.logTextView.text =
+        [self.logTextView.text stringByAppendingFormat:@"%@\n", msg];
+    if (self.logTextView.text.length > 10000) { // Limit log size
+      self.logTextView.text = [self.logTextView.text
+          substringFromIndex:self.logTextView.text.length - 10000];
+    }
+    [self.logTextView
+        scrollRangeToVisible:NSMakeRange(self.logTextView.text.length, 1)];
+  });
 }
 
 @end
