@@ -15,9 +15,6 @@ targets:
       # 🔧 嵌入XCTest bundle到PlugIns目录
       - target: TrollTouchUITests
         embed: true
-        copyFiles:
-          destination: plugins
-          subpath: ""
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.trolltouch.app
       INFOPLIST_FILE: TrollTouch/Info.plist
