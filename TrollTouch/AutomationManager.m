@@ -469,13 +469,14 @@ void signalHandler(int signal) {
 
   float duration = 0.25f;
 
-  [self log:@"[操作] 👆 准备滑动 (FIXED): (%.3f, %.3f) → (%.3f, %.3f) 时长: "
+  [self log:@"[操作] 👆 准备滑动 (XCTest): (%.3f, %.3f) → (%.3f, %.3f) 时长: "
             @"%.2fs",
             startX, startY, endX, endY, duration];
 
-  [[TouchSimulator sharedSimulator] swipeFrom:CGPointMake(startX, startY)
-                                           to:CGPointMake(endX, endY)
-                                     duration:duration];
+  [[XCTestTouchInjector sharedInjector]
+      swipeFromNormalizedPoint:CGPointMake(startX, startY)
+                            to:CGPointMake(endX, endY)
+                      duration:duration];
 
   [self log:@"[操作] ✅ 滑动到下一个视频"];
 }
