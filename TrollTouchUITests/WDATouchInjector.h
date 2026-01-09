@@ -1,11 +1,10 @@
 //
 //  WDATouchInjector.h
-//  WebDriverAgent-style touch injector using XCPointerEventPath
+//  WebDriverAgent-style touch injector
 //
 
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
-
 
 NS_ASSUME_NONNULL_BEGIN
 
