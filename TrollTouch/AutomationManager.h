@@ -23,6 +23,7 @@ typedef struct {
 - (void)performFollow;     // 测试: 关注
 - (void)performLike;       // 测试: 点赞
 - (void)performHumanSwipe; // 测试: 下一个视频
+- (void)automationLoop;    // 公开给 XCTest 调用
 
 // Log callback for UI
 @property(nonatomic, copy) void (^logHandler)(NSString *log);
