@@ -111,6 +111,8 @@ jobs:
           XCODE_FRAMEWORKS="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/Library"
           XCODE_PRIVATE_FRAMEWORKS="$XCODE_FRAMEWORKS/PrivateFrameworks"
           
+          echo "📦 Copying all XCTest-related frameworks..."
+          
           # Copy XCTest.framework (public framework)
           if [ -d "$XCODE_FRAMEWORKS/Frameworks/XCTest.framework" ]; then
             cp -R "$XCODE_FRAMEWORKS/Frameworks/XCTest.framework" "$APP_PATH/Frameworks/"
@@ -120,14 +122,26 @@ jobs:
             exit 1
           fi
           
-          # Copy private frameworks to PrivateFrameworks directory
-          for framework in "XCTestCore" "XCUIAutomation" "XCUnit" "XCTAutomationSupport"; do
-            if [ -d "$XCODE_PRIVATE_FRAMEWORKS/${framework}.framework" ]; then
-              cp -R "$XCODE_PRIVATE_FRAMEWORKS/${framework}.framework" "$APP_PATH/PrivateFrameworks/"
-              echo "✅ ${framework}.framework copied to PrivateFrameworks"
-            else
-              echo "⚠️ ${framework}.framework not found"
+          # Copy ALL frameworks from PrivateFrameworks that start with XC
+          # This ensures we don't miss any dependencies
+          echo "📦 Copying all XC* frameworks from PrivateFrameworks..."
+          for framework in "$XCODE_PRIVATE_FRAMEWORKS"/XC*.framework; do
+            if [ -d "$framework" ]; then
+              framework_name=$(basename "$framework")
+              cp -R "$framework" "$APP_PATH/PrivateFrameworks/"
+              echo "✅ $framework_name copied to PrivateFrameworks"
             fi
+          done
+          
+          # Also copy any other test-related frameworks
+          for framework_name in "DTX" "DVT" "IDE"; do
+            for framework in "$XCODE_PRIVATE_FRAMEWORKS"/${framework_name}*.framework; do
+              if [ -d "$framework" ]; then
+                name=$(basename "$framework")
+                cp -R "$framework" "$APP_PATH/PrivateFrameworks/"
+                echo "✅ $name copied to PrivateFrameworks"
+              fi
+            done
           done
           
           echo "📋 Directory contents:"
@@ -135,6 +149,7 @@ jobs:
           ls -la "$APP_PATH/Frameworks/" || true
           echo "PrivateFrameworks:"
           ls -la "$APP_PATH/PrivateFrameworks/" || true
+          echo "Total frameworks copied: $(ls -1 "$APP_PATH/PrivateFrameworks/" | wc -l)"
           
           # Fix rpath for UITests bundle to find frameworks
           echo "🔧 Fixing rpath for UITests bundle..."
