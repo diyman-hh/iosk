@@ -70,7 +70,13 @@ targets:
     type: bundle
     platform: iOS
     sources:
-      - path: TrollTouchUITests
+      - TrollTouchUITests/TrollTouchUITests.m
+      - TrollTouchUITests/Info.plist
+      - TrollTouchUITests/XCPointerEventPath.h
+      - TrollTouchUITests/WDATouchInjector.h
+      - TrollTouchUITests/WDATouchInjector.m
+      - TrollTouchUITests/AutomationServer.h
+      - TrollTouchUITests/AutomationServer.m
     dependencies:
       # 🔧 添加XCTest框架链接
       - framework: XCTest.framework

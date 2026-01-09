@@ -1,13 +1,13 @@
 //
 //  TrollTouchUITests.m
-//  TrollTouch UI Tests
-//
-//  Bridge to AutomationManager
+//  WebDriverAgent-style automation server
 //
 
+#import "AutomationServer.h"
+#import "WDATouchInjector.h"
 #import <XCTest/XCTest.h>
 
-// Interface for XCTestCase to avoid import issues
+
 @interface TrollTouchUITests : XCTestCase
 @end
 
@@ -15,64 +15,50 @@
 
 - (void)setUp {
   [super setUp];
-
-  // Disable UI interruption monitoring
   self.continueAfterFailure = YES;
 
-  // Redirect NSLog to AutomationManager log if available
-  NSLog(@"[TrollTouchUITests] Test bundle loaded and setUp called.");
+  NSLog(@"[TrollTouchUITests] ========================================");
+  NSLog(@"[TrollTouchUITests] 🚀 WebDriverAgent-Style Automation Server");
+  NSLog(@"[TrollTouchUITests] ========================================");
+
+  // Start automation server
+  [[AutomationServer sharedServer] startOnPort:8100];
+
+  // Initialize touch injector
+  [WDATouchInjector sharedInjector];
+
+  NSLog(@"[TrollTouchUITests] ✅ Server initialized and ready");
 }
 
 - (void)tearDown {
+  [[AutomationServer sharedServer] stop];
   [super tearDown];
 }
 
 /**
- * Main entry point called by XCTestRunner
+ * Main test that keeps the automation server running
+ * This test never finishes - it keeps the UITests process alive
  */
-- (void)testAutomationBridge {
-  NSLog(@"[TrollTouchUITests] Bridging to AutomationManager (Runtime)...");
+- (void)testAutomationServer {
+  NSLog(@"[TrollTouchUITests] 🔄 Automation server is running...");
+  NSLog(@"[TrollTouchUITests] 📡 Waiting for commands from main app");
 
-  // Get class using runtime (it is hosted in the Main App executable)
-  Class managerClass = NSClassFromString(@"AutomationManager");
-  if (!managerClass) {
-    NSLog(@"[TrollTouchUITests] ❌ Critical: AutomationManager class not found "
-          @"in host app!");
-    return;
+  // Keep the test running indefinitely
+  // This allows the AutomationServer to receive and process commands
+  while (YES) {
+    // Run the run loop to process events
+    [[NSRunLoop currentRunLoop]
+           runMode:NSDefaultRunLoopMode
+        beforeDate:[NSDate dateWithTimeIntervalSinceNow:1.0]];
+
+    // Check if server is still running
+    if (![[AutomationServer sharedServer] isRunning]) {
+      NSLog(@"[TrollTouchUITests] ⚠️ Server stopped, exiting...");
+      break;
+    }
   }
 
-  // Get shared instance: [AutomationManager sharedManager]
-  SEL sharedSel = NSSelectorFromString(@"sharedManager");
-  if (![managerClass respondsToSelector:sharedSel]) {
-    NSLog(@"[TrollTouchUITests] ❌ sharedManager selector not found");
-    return;
-  }
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-  id manager = [managerClass performSelector:sharedSel];
-#pragma clang diagnostic pop
-
-  if (!manager) {
-    NSLog(@"[TrollTouchUITests] ❌ Failed to get sharedManager instance");
-    return;
-  }
-
-  // Call: [manager automationLoop]
-  SEL loopSel = NSSelectorFromString(@"automationLoop");
-  if (![manager respondsToSelector:loopSel]) {
-    NSLog(@"[TrollTouchUITests] ❌ automationLoop selector not found");
-    return;
-  }
-
-  NSLog(@"[TrollTouchUITests] Entering automation loop...");
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-  [manager performSelector:loopSel];
-#pragma clang diagnostic pop
-
-  NSLog(@"[TrollTouchUITests] Automation loop finished.");
+  NSLog(@"[TrollTouchUITests] Test finished");
 }
 
 @end
