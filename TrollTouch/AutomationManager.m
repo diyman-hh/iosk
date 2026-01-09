@@ -550,8 +550,10 @@ void signalHandler(int signal) {
 
   [self log:@"[*] 自动发布完成。"];
 
-  // 返回推荐页 (点击左下角首页)
-  performGSTouch(0.08, 0.93);
+  // 7. 返回首页 (点击左上角返回)
+  [self log:@"[*] 返回首页..."];
+  [[AutomationClient sharedClient] tapAtPoint:CGPointMake(0.08, 0.93)
+                                   completion:nil];
   [NSThread sleepForTimeInterval:2.0];
 }
 
