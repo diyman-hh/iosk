@@ -30,13 +30,14 @@
 #pragma mark - Coordinate Conversion
 
 - (CGPoint)screenPointFromNormalized:(CGPoint)normalizedPoint {
-  // Get screen bounds
-  CGRect screenBounds = [[UIScreen mainScreen] bounds];
-  CGFloat scale = [[UIScreen mainScreen] scale];
+  // Use hardcoded screen dimensions for iPhone (most common: 1170x2532 for
+  // iPhone 13 Pro) XCTest will scale appropriately for the actual device
+  CGFloat screenWidth = 1170.0;
+  CGFloat screenHeight = 2532.0;
 
   // Convert normalized (0.0-1.0) to actual screen coordinates
-  CGFloat x = normalizedPoint.x * screenBounds.size.width * scale;
-  CGFloat y = normalizedPoint.y * screenBounds.size.height * scale;
+  CGFloat x = normalizedPoint.x * screenWidth;
+  CGFloat y = normalizedPoint.y * screenHeight;
 
   return CGPointMake(x, y);
 }
