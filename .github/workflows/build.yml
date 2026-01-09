@@ -16,6 +16,21 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
+      - name: Auto Increment Version
+        run: |
+          # Get current version from Info.plist
+          CURRENT_VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" TrollTouch/Info.plist)
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Increment version (simple integer increment)
+          NEW_VERSION=$((CURRENT_VERSION + 1))
+          echo "New version: $NEW_VERSION"
+          
+          # Update Info.plist
+          /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $NEW_VERSION" TrollTouch/Info.plist
+          
+          echo "✅ Version bumped from $CURRENT_VERSION to $NEW_VERSION"
+
       - name: Generate Xcode Project
         run: |
           xcodegen generate

@@ -1,10 +1,11 @@
 #import "AutomationManager.h"
 // #import "BackboardTouchInjector.h"  // File not found - commented out
-#import "ScreenCapture.h"
-// #import "TouchSimulator.h"  // IOHIDEvent approach doesn't work on iOS 15
 #import "GSEventHelper.h"
+#import "ScreenCapture.h"
+#import "TouchSimulator.h" // Using IOHIDEvent (limited but won't crash)
 #import "VisionHelper.h"
-#import "XCTestTouchInjector.h" // Using XCTest API like WebDriverAgent
+
+// #import "XCTestTouchInjector.h"  // XCTest不可用于真机运行时
 #import <AVFoundation/AVFoundation.h>
 #import <CoreLocation/CoreLocation.h>
 #import <UIKit/UIKit.h>
@@ -299,13 +300,14 @@ void signalHandler(int signal) {
   [self setupBackgrounds];
 
   // Initialize BackboardServices touch injector
-  [self log:@"[系统] 初始化XCTest触摸注入..."];
-  BOOL xcInitialized = [[XCTestTouchInjector sharedInjector] initialize];
-  if (xcInitialized) {
-    [self log:@"[系统] ✅ XCTest触摸系统初始化成功"];
-  } else {
-    [self log:@"[系统] ⚠️ XCTest初始化失败"];
-  }
+  [self log:@"[系统] ⚠️ XCTest在真机上不可用，使用IOHIDEvent方法..."];
+  // XCTest framework只在模拟器/开发环境可用，真机会崩溃
+  // BOOL xcInitialized = [[XCTestTouchInjector sharedInjector] initialize];
+  // if (xcInitialized) {
+  //   [self log:@"[系统] ✅ XCTest触摸系统初始化成功"];
+  // } else {
+  //   [self log:@"[系统] ⚠️ XCTest初始化失败"];
+  // }
   // BOOL bbInitialized = [[BackboardTouchInjector sharedInjector] initialize];
   // if (bbInitialized) {
   //   [self log:@"[系统] ✅ BackboardServices 初始化成功 - 可以跨应用控制！"];
@@ -376,12 +378,11 @@ void signalHandler(int signal) {
 - (void)launchTikTok {
   [self log:@"[*] 正在启动 TikTok..."];
 
-  // Use XCTest to launch app
-  [[XCTestTouchInjector sharedInjector] launchApp:TIKTOK_GLOBAL];
-  [NSThread sleepForTimeInterval:5.0]; // Wait for app to fully launch
-  return;
+  // XCTest不可用，使用传统方法
+  // [[XCTestTouchInjector sharedInjector] launchApp:TIKTOK_GLOBAL];
+  // [NSThread sleepForTimeInterval:5.0];
 
-  // Old method (fallback)
+  // Old method
   BOOL success = NO;
 
   // Method 1: SpringBoardServices (Private API)
@@ -435,12 +436,10 @@ void signalHandler(int signal) {
 - (void)performLike {
   [self log:@"[操作] ❤️ 执行点赞动作 (坐标: 0.50, 0.50)"];
 
-  // Double tap using XCTest
-  [[XCTestTouchInjector sharedInjector]
-      tapAtNormalizedPoint:CGPointMake(0.5, 0.5)];
+  // Double tap
+  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.5, 0.5)];
   usleep(100000);
-  [[XCTestTouchInjector sharedInjector]
-      tapAtNormalizedPoint:CGPointMake(0.5, 0.5)];
+  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.5, 0.5)];
 
   [self log:@"[操作] ✅ 点赞完成"];
 }
@@ -448,8 +447,7 @@ void signalHandler(int signal) {
 - (void)performFollow {
   [self log:@"[操作] ➕ 执行关注动作 (坐标: 0.93, 0.36)"];
 
-  [[XCTestTouchInjector sharedInjector]
-      tapAtNormalizedPoint:CGPointMake(0.93, 0.36)];
+  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.93, 0.36)];
 
   [self log:@"[操作] ✅ 关注完成"];
 }
@@ -469,14 +467,14 @@ void signalHandler(int signal) {
 
   float duration = 0.25f;
 
-  [self log:@"[操作] 👆 准备滑动 (XCTest): (%.3f, %.3f) → (%.3f, %.3f) 时长: "
-            @"%.2fs",
-            startX, startY, endX, endY, duration];
+  [self
+      log:@"[操作] 👆 准备滑动 (IOHIDEvent): (%.3f, %.3f) → (%.3f, %.3f) 时长: "
+          @"%.2fs",
+          startX, startY, endX, endY, duration];
 
-  [[XCTestTouchInjector sharedInjector]
-      swipeFromNormalizedPoint:CGPointMake(startX, startY)
-                            to:CGPointMake(endX, endY)
-                      duration:duration];
+  [[TouchSimulator sharedSimulator] swipeFrom:CGPointMake(startX, startY)
+                                           to:CGPointMake(endX, endY)
+                                     duration:duration];
 
   [self log:@"[操作] ✅ 滑动到下一个视频"];
 }
