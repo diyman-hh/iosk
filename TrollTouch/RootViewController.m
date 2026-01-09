@@ -4,8 +4,8 @@
 //
 
 #import "RootViewController.h"
+#import "AutomationManager.h"
 #import "ScheduleManager.h"
-#import "XCTestRunner.h"
 
 @implementation RootViewController
 

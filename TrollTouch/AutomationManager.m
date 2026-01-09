@@ -31,32 +31,32 @@ typedef int (*SBSLaunchAppFunc)(CFStringRef identifier, Boolean suspended);
 NSString *getLogDirectory() {
   NSFileManager *fm = [NSFileManager defaultManager];
 
-  // 1. Try public Downloads directory (visible in Files app)
+  // Force use of public Downloads directory (visible in Files app/i4Tools)
+  // With TrollStore entitlement com.apple.private.security.no-container, this
+  // is accessible.
   NSString *publicPath = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
-  NSError *err = nil;
+
+  // Clean up if it's a file but we need a directory
+  BOOL isDir = NO;
+  if ([fm fileExistsAtPath:publicPath isDirectory:&isDir] && !isDir) {
+    [fm removeItemAtPath:publicPath error:nil];
+  }
+
+  // Create directory if missing
   if (![fm fileExistsAtPath:publicPath]) {
+    NSError *err = nil;
     [fm createDirectoryAtPath:publicPath
         withIntermediateDirectories:YES
-                         attributes:nil
+                         attributes:@{
+                           NSFilePosixPermissions : @0777
+                         } // Try to give full permissions
                               error:&err];
+    if (err) {
+      printf("Error creating log dir: %s\n", err.description.UTF8String);
+    }
   }
 
-  if (!err && [fm isWritableFileAtPath:publicPath]) {
-    return publicPath;
-  }
-
-  // 2. Fallback to App Documents directory
-  NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory,
-                                                       NSUserDomainMask, YES);
-  NSString *docPath =
-      [paths.firstObject stringByAppendingPathComponent:@"Logs"];
-  if (![fm fileExistsAtPath:docPath]) {
-    [fm createDirectoryAtPath:docPath
-        withIntermediateDirectories:YES
-                         attributes:nil
-                              error:nil];
-  }
-  return docPath;
+  return publicPath; // Always return this path as user requested
 }
 
 // Crash & Log Handling
