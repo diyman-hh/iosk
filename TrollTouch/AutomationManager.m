@@ -1,7 +1,7 @@
 #import "AutomationManager.h"
-#import "BackboardTouchInjector.h"
+// #import "BackboardTouchInjector.h"  // File not found - commented out
 #import "ScreenCapture.h"
-#import "TouchSimulator.h"
+// #import "TouchSimulator.h"  // File not found - commented out
 #import "VisionHelper.h"
 #import <AVFoundation/AVFoundation.h>
 #import <CoreLocation/CoreLocation.h>
@@ -273,13 +273,13 @@ void signalHandler(int signal) {
   [self setupBackgrounds];
 
   // Initialize BackboardServices touch injector
-  [self log:@"[系统] 初始化 BackboardServices 触摸注入..."];
-  BOOL bbInitialized = [[BackboardTouchInjector sharedInjector] initialize];
-  if (bbInitialized) {
-    [self log:@"[系统] ✅ BackboardServices 初始化成功 - 可以跨应用控制！"];
-  } else {
-    [self log:@"[系统] ⚠️ BackboardServices 初始化失败 - 将使用备用方法"];
-  }
+  [self log:@"[系统] 使用GSEvent触摸注入方法..."];
+  // BOOL bbInitialized = [[BackboardTouchInjector sharedInjector] initialize];
+  // if (bbInitialized) {
+  //   [self log:@"[系统] ✅ BackboardServices 初始化成功 - 可以跨应用控制！"];
+  // } else {
+  //   [self log:@"[系统] ⚠️ BackboardServices 初始化失败 - 将使用备用方法"];
+  // }
 
   [self setupTransparentForeground]; // Fullscreen transparent foreground mode
   [self sendNotification:@"TrollTouch"
@@ -360,10 +360,10 @@ void signalHandler(int signal) {
   [self log:@"[*] 执行点赞 (坐标: 0.50, 0.50)"];
   [self setupBackgrounds];
 
-  // Use BackboardTouchInjector for cross-app touch
-  [[BackboardTouchInjector sharedInjector] tapAtX:0.5 y:0.5];
+  // Use GSEvent touch
+  perform_touch(0.5, 0.5);
   [NSThread sleepForTimeInterval:0.1];
-  [[BackboardTouchInjector sharedInjector] tapAtX:0.5 y:0.5];
+  perform_touch(0.5, 0.5);
 }
 
 // 关注操作逻辑
@@ -389,12 +389,8 @@ void signalHandler(int signal) {
             x2, y2, dur];
   [self setupBackgrounds];
 
-  // Use BackboardTouchInjector for cross-app swipe
-  [[BackboardTouchInjector sharedInjector] swipeFromX:x1
-                                                    y:y1
-                                                  toX:x2
-                                                    y:y2
-                                             duration:dur];
+  // Use GSEvent swipe
+  perform_swipe(x1, y1, x2, y2, dur);
 }
 
 - (BOOL)isWorkingHour {
