@@ -6,10 +6,46 @@
 #import "BundleLoader.h"
 #import <dlfcn.h>
 
+// Helper function to write logs to file
+static void logToFile(NSString *message) {
+  NSString *logDir = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
+  NSString *logPath =
+      [logDir stringByAppendingPathComponent:@"bundle_loader.log"];
+
+  // Create directory if needed
+  [[NSFileManager defaultManager] createDirectoryAtPath:logDir
+                            withIntermediateDirectories:YES
+                                             attributes:nil
+                                                  error:nil];
+
+  // Append to log file
+  NSString *timestamp =
+      [NSDateFormatter localizedStringFromDate:[NSDate date]
+                                     dateStyle:NSDateFormatterShortStyle
+                                     timeStyle:NSDateFormatterMediumStyle];
+  NSString *logLine =
+      [NSString stringWithFormat:@"[%@] %@\n", timestamp, message];
+
+  NSFileHandle *fileHandle = [NSFileHandle fileHandleForWritingAtPath:logPath];
+  if (fileHandle) {
+    [fileHandle seekToEndOfFile];
+    [fileHandle writeData:[logLine dataUsingEncoding:NSUTF8StringEncoding]];
+    [fileHandle closeFile];
+  } else {
+    [logLine writeToFile:logPath
+              atomically:YES
+                encoding:NSUTF8StringEncoding
+                   error:nil];
+  }
+
+  // Also NSLog for console
+  NSLog(@"%@", message);
+}
+
 @implementation BundleLoader
 
 + (BOOL)loadUITestsBundle {
-  NSLog(@"[BundleLoader] 🔍 Attempting to load UITests bundle...");
+  logToFile(@"[BundleLoader] 🔍 Attempting to load UITests bundle...");
 
   // Get main bundle path
   NSString *mainBundlePath = [[NSBundle mainBundle] bundlePath];
@@ -18,39 +54,46 @@
   NSString *uiTestsBundlePath =
       [plugInsPath stringByAppendingPathComponent:@"TrollTouchUITests.xctest"];
 
-  NSLog(@"[BundleLoader] 📂 Looking for bundle at: %@", uiTestsBundlePath);
+  logToFile(
+      [NSString stringWithFormat:@"[BundleLoader] 📂 Looking for bundle at: %@",
+                                 uiTestsBundlePath]);
 
   // Check if bundle exists
   if (![[NSFileManager defaultManager] fileExistsAtPath:uiTestsBundlePath]) {
-    NSLog(@"[BundleLoader] ❌ UITests bundle not found at path");
+    logToFile(@"[BundleLoader] ❌ UITests bundle not found at path");
     return NO;
   }
+
+  logToFile(@"[BundleLoader] ✅ Bundle file exists");
 
   // Load the bundle
   NSBundle *uiTestsBundle = [NSBundle bundleWithPath:uiTestsBundlePath];
   if (!uiTestsBundle) {
-    NSLog(@"[BundleLoader] ❌ Failed to create bundle object");
+    logToFile(@"[BundleLoader] ❌ Failed to create bundle object");
     return NO;
   }
 
-  NSLog(@"[BundleLoader] 📦 Bundle object created: %@", uiTestsBundle);
+  logToFile(
+      [NSString stringWithFormat:@"[BundleLoader] 📦 Bundle object created: %@",
+                                 uiTestsBundle]);
 
   // Load the bundle
   NSError *error = nil;
   BOOL loaded = [uiTestsBundle loadAndReturnError:&error];
 
   if (!loaded) {
-    NSLog(@"[BundleLoader] ❌ Failed to load bundle: %@",
-          error.localizedDescription);
+    logToFile([NSString
+        stringWithFormat:@"[BundleLoader] ❌ Failed to load bundle: %@",
+                         error.localizedDescription]);
     return NO;
   }
 
-  NSLog(@"[BundleLoader] ✅ UITests bundle loaded successfully");
+  logToFile(@"[BundleLoader] ✅ UITests bundle loaded successfully");
 
   // Try to get AutomationServer class
   Class serverClass = NSClassFromString(@"AutomationServer");
   if (serverClass) {
-    NSLog(@"[BundleLoader] ✅ AutomationServer class found");
+    logToFile(@"[BundleLoader] ✅ AutomationServer class found");
 
     // Try to start the server
     SEL sharedSel = NSSelectorFromString(@"sharedServer");
@@ -61,8 +104,10 @@
 #pragma clang diagnostic pop
 
       if (server) {
-        NSLog(@"[BundleLoader] ✅ AutomationServer instance created: %@",
-              server);
+        logToFile([NSString
+            stringWithFormat:
+                @"[BundleLoader] ✅ AutomationServer instance created: %@",
+                server]);
 
         // Check if server is running
         SEL isRunningSel = NSSelectorFromString(@"isRunning");
@@ -71,15 +116,22 @@
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
           BOOL running = (BOOL)[server performSelector:isRunningSel];
 #pragma clang diagnostic pop
-          NSLog(@"[BundleLoader] 📊 Server running status: %d", running);
+          logToFile([NSString
+              stringWithFormat:@"[BundleLoader] 📊 Server running status: %d",
+                               running]);
         }
 
         return YES;
+      } else {
+        logToFile(
+            @"[BundleLoader] ⚠️ Failed to create AutomationServer instance");
       }
+    } else {
+      logToFile(@"[BundleLoader] ⚠️ sharedServer method not found");
     }
   } else {
-    NSLog(@"[BundleLoader] ⚠️ AutomationServer class not found after loading "
-          @"bundle");
+    logToFile(@"[BundleLoader] ⚠️ AutomationServer class not found after "
+              @"loading bundle");
   }
 
   return loaded;
@@ -87,7 +139,10 @@
 
 + (BOOL)isUITestsBundleLoaded {
   Class serverClass = NSClassFromString(@"AutomationServer");
-  return serverClass != nil;
+  BOOL loaded = serverClass != nil;
+  logToFile([NSString
+      stringWithFormat:@"[BundleLoader] isUITestsBundleLoaded: %d", loaded]);
+  return loaded;
 }
 
 @end
