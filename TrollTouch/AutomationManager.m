@@ -2,6 +2,7 @@
 // #import "BackboardTouchInjector.h"  // File not found - commented out
 #import "ScreenCapture.h"
 // #import "TouchSimulator.h"  // File not found - commented out
+#import "GSEventHelper.h"
 #import "VisionHelper.h"
 #import <AVFoundation/AVFoundation.h>
 #import <CoreLocation/CoreLocation.h>
@@ -12,6 +13,7 @@
 #import <signal.h>
 #import <stdlib.h>
 #import <sys/utsname.h>
+
 
 #define TIKTOK_GLOBAL @"com.zhiliaoapp.musically" // Restored macro
 #define TIKTOK_CHINA @"com.ss.iphone.ugc.Aweme"
@@ -94,7 +96,7 @@ void signalHandler(int signal) {
                                   .maxWatchSec = 8,
                                   .swipeJitter = 0.05,
                                   .isRunning = NO};
-    init_touch_system();
+    initGSEventSystem();
   });
   return shared;
 }
@@ -361,16 +363,16 @@ void signalHandler(int signal) {
   [self setupBackgrounds];
 
   // Use GSEvent touch
-  perform_touch(0.5, 0.5);
+  performGSTouch(0.5, 0.5);
   [NSThread sleepForTimeInterval:0.1];
-  perform_touch(0.5, 0.5);
+  performGSTouch(0.5, 0.5);
 }
 
 // 关注操作逻辑
 - (void)performFollow {
   [self log:@"[*] 执行关注 (坐标: 0.93, 0.36)"];
   [self setupBackgrounds];
-  perform_touch(0.93, 0.36);
+  performGSTouch(0.93, 0.36);
 }
 
 - (float)randFloat:(float)min max:(float)max {
@@ -390,7 +392,7 @@ void signalHandler(int signal) {
   [self setupBackgrounds];
 
   // Use GSEvent swipe
-  perform_swipe(x1, y1, x2, y2, dur);
+  performGSSwipe(x1, y1, x2, y2, dur);
 }
 
 - (BOOL)isWorkingHour {
@@ -411,7 +413,7 @@ void signalHandler(int signal) {
 
   // 1. 点击 '+' (底部中间)
   [self log:@"[*] 点击 '+'..."];
-  perform_touch(0.5, 0.93);
+  performGSTouch(0.5, 0.93);
   [NSThread sleepForTimeInterval:2.5];
 
   // 2. 点击 '上传' (底部右侧)
