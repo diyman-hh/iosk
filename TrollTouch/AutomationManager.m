@@ -1,8 +1,7 @@
 #import "AutomationManager.h"
 // #import "BackboardTouchInjector.h"  // File not found - commented out
-#import "GSEventHelper.h"
+#import "AutomationClient.h" // WebDriverAgent-style client
 #import "ScreenCapture.h"
-#import "TouchSimulator.h" // Using IOHIDEvent (limited but won't crash)
 #import "VisionHelper.h"
 
 // #import "XCTestTouchInjector.h"  // XCTest不可用于真机运行时
@@ -117,7 +116,6 @@ void signalHandler(int signal) {
                                   .maxWatchSec = 8,
                                   .swipeJitter = 0.05,
                                   .isRunning = NO};
-    initGSEventSystem();
   });
   return shared;
 }
@@ -299,15 +297,15 @@ void signalHandler(int signal) {
   [self setupNotifications];
   [self setupBackgrounds];
 
-  // Initialize BackboardServices touch injector
-  [self log:@"[系统] ⚠️ XCTest在真机上不可用，使用IOHIDEvent方法..."];
-  // XCTest framework只在模拟器/开发环境可用，真机会崩溃
-  // BOOL xcInitialized = [[XCTestTouchInjector sharedInjector] initialize];
-  // if (xcInitialized) {
-  //   [self log:@"[系统] ✅ XCTest触摸系统初始化成功"];
-  // } else {
-  //   [self log:@"[系统] ⚠️ XCTest初始化失败"];
-  // }
+  // Check WebDriverAgent-style automation server
+  [self log:@"[系统] 🔍 检查WebDriverAgent自动化服务器..."];
+  [[AutomationClient sharedClient] checkServerStatus:^(BOOL available) {
+    if (available) {
+      [self log:@"[系统] ✅ 自动化服务器已就绪 (XCPointerEventPath)"];
+    } else {
+      [self log:@"[系统] ⚠️ 自动化服务器未运行"];
+    }
+  }];
   // BOOL bbInitialized = [[BackboardTouchInjector sharedInjector] initialize];
   // if (bbInitialized) {
   //   [self log:@"[系统] ✅ BackboardServices 初始化成功 - 可以跨应用控制！"];
@@ -376,13 +374,21 @@ void signalHandler(int signal) {
 }
 
 - (void)launchTikTok {
-  [self log:@"[*] 正在启动 TikTok..."];
+  [self log:@"[*] 🚀 使用WebDriverAgent方式启动 TikTok..."];
 
-  // XCTest不可用，使用传统方法
-  // [[XCTestTouchInjector sharedInjector] launchApp:TIKTOK_GLOBAL];
-  // [NSThread sleepForTimeInterval:5.0];
+  [[AutomationClient sharedClient]
+       launchApp:TIKTOK_GLOBAL
+      completion:^(BOOL success, NSError *error) {
+        if (success) {
+          [self log:@"[*] ✅ TikTok启动成功"];
+        } else {
+          [self log:@"[*] ❌ TikTok启动失败: %@", error.localizedDescription];
+        }
+      }];
+  [NSThread sleepForTimeInterval:5.0];
+  return;
 
-  // Old method
+  // Old method (fallback)
   BOOL success = NO;
 
   // Method 1: SpringBoardServices (Private API)
@@ -436,10 +442,12 @@ void signalHandler(int signal) {
 - (void)performLike {
   [self log:@"[操作] ❤️ 执行点赞动作 (坐标: 0.50, 0.50)"];
 
-  // Double tap
-  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.5, 0.5)];
+  // Double tap using WebDriverAgent client
+  [[AutomationClient sharedClient] tapAtPoint:CGPointMake(0.5, 0.5)
+                                   completion:nil];
   usleep(100000);
-  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.5, 0.5)];
+  [[AutomationClient sharedClient] tapAtPoint:CGPointMake(0.5, 0.5)
+                                   completion:nil];
 
   [self log:@"[操作] ✅ 点赞完成"];
 }
@@ -447,7 +455,8 @@ void signalHandler(int signal) {
 - (void)performFollow {
   [self log:@"[操作] ➕ 执行关注动作 (坐标: 0.93, 0.36)"];
 
-  [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(0.93, 0.36)];
+  [[AutomationClient sharedClient] tapAtPoint:CGPointMake(0.93, 0.36)
+                                   completion:nil];
 
   [self log:@"[操作] ✅ 关注完成"];
 }
@@ -467,14 +476,14 @@ void signalHandler(int signal) {
 
   float duration = 0.25f;
 
-  [self
-      log:@"[操作] 👆 准备滑动 (IOHIDEvent): (%.3f, %.3f) → (%.3f, %.3f) 时长: "
-          @"%.2fs",
-          startX, startY, endX, endY, duration];
+  [self log:@"[操作] 👆 准备滑动 (WDA): (%.3f, %.3f) → (%.3f, %.3f) 时长: "
+            @"%.2fs",
+            startX, startY, endX, endY, duration];
 
-  [[TouchSimulator sharedSimulator] swipeFrom:CGPointMake(startX, startY)
-                                           to:CGPointMake(endX, endY)
-                                     duration:duration];
+  [[AutomationClient sharedClient] swipeFrom:CGPointMake(startX, startY)
+                                          to:CGPointMake(endX, endY)
+                                    duration:duration
+                                  completion:nil];
 
   [self log:@"[操作] ✅ 滑动到下一个视频"];
 }
