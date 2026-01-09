@@ -34,6 +34,7 @@ jobs:
       - name: Build with xcodebuild
         run: |
           echo "🔨 Building TrollTouch with xcodebuild..."
+          set -o pipefail
           xcodebuild -project TrollTouch.xcodeproj \
                      -scheme TrollTouch \
                      -sdk iphoneos \
@@ -44,17 +45,13 @@ jobs:
                      CODE_SIGN_ENTITLEMENTS="" \
                      PRODUCT_BUNDLE_IDENTIFIER=com.trolltouch.app \
                      IPHONEOS_DEPLOYMENT_TARGET=14.0 \
-                     | xcpretty || xcodebuild -project TrollTouch.xcodeproj \
-                     -scheme TrollTouch \
-                     -sdk iphoneos \
-                     -configuration Release \
-                     -derivedDataPath ./build \
-                     CODE_SIGNING_ALLOWED=NO \
-                     CODE_SIGN_IDENTITY="" \
-                     CODE_SIGN_ENTITLEMENTS="" \
-                     PRODUCT_BUNDLE_IDENTIFIER=com.trolltouch.app \
-                     IPHONEOS_DEPLOYMENT_TARGET=14.0
+                     2>&1 | tee build.log
+          
           echo "✅ Build completed"
+          
+          # Show what was actually built
+          echo "📦 Build products:"
+          find ./build -type f -name "*.app" -o -name "*.xctest" -o -name "TrollTouch" | head -20
 
       - name: Copy XCTest Bundle to PlugIns
         run: |
