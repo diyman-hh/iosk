@@ -506,7 +506,16 @@ void signalHandler(int signal) {
 
   // 1. 点击 '+' (底部中间)
   [self log:@"[*] 点击 '+'..."];
-  performGSTouch(0.5, 0.93);
+  // Test tap using WebDriverAgent client
+  [[AutomationClient sharedClient]
+      tapAtPoint:CGPointMake(0.93, 0.5)
+      completion:^(BOOL success, NSError *error) {
+        if (success) {
+          [self log:@"[测试] ✅ 测试点击成功"];
+        } else {
+          [self log:@"[测试] ❌ 测试点击失败: %@", error.localizedDescription];
+        }
+      }];
   [NSThread sleepForTimeInterval:2.5];
 
   // 2. 点击 '上传' (底部右侧)
