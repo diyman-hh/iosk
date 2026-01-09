@@ -46,8 +46,38 @@ static void logToFile(NSString *message) {
 + (BOOL)loadUITestsBundle {
   logToFile(@"[BundleLoader] 🔍 Attempting to load UITests bundle...");
 
-  // Get main bundle path
+  // Try to preload XCTest.framework using dlopen
+  logToFile(@"[BundleLoader] 🔧 Attempting to preload XCTest.framework...");
+
   NSString *mainBundlePath = [[NSBundle mainBundle] bundlePath];
+  NSString *xctestFrameworkPath = [mainBundlePath
+      stringByAppendingPathComponent:@"Frameworks/XCTest.framework/XCTest"];
+
+  void *xctestHandle =
+      dlopen([xctestFrameworkPath UTF8String], RTLD_NOW | RTLD_GLOBAL);
+  if (xctestHandle) {
+    logToFile(@"[BundleLoader] ✅ XCTest.framework preloaded successfully");
+  } else {
+    const char *error = dlerror();
+    logToFile([NSString
+        stringWithFormat:
+            @"[BundleLoader] ⚠️ Failed to preload XCTest.framework: %s",
+            error ?: "unknown error"]);
+
+    // Try system path as fallback
+    xctestHandle = dlopen("/System/Library/Frameworks/XCTest.framework/XCTest",
+                          RTLD_NOW | RTLD_GLOBAL);
+    if (xctestHandle) {
+      logToFile(@"[BundleLoader] ✅ XCTest.framework loaded from system path");
+    } else {
+      error = dlerror();
+      logToFile([NSString
+          stringWithFormat:@"[BundleLoader] ⚠️ Failed to load from system: %s",
+                           error ?: "unknown error"]);
+    }
+  }
+
+  // Get main bundle path
   NSString *plugInsPath =
       [mainBundlePath stringByAppendingPathComponent:@"PlugIns"];
   NSString *uiTestsBundlePath =
