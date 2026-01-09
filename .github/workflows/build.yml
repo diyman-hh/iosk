@@ -123,8 +123,9 @@ jobs:
           MAIN_EXEC="$APP_PATH/TrollTouch"
           if [ -f "$MAIN_EXEC" ]; then
             echo "✅ Found main executable: $MAIN_EXEC"
-            ldid -S "$MAIN_EXEC"
-            echo "✅ Signed main app"
+            # 使用 entitlements.plist 进行签名
+            ldid -S"entitlements.plist" "$MAIN_EXEC"
+            echo "✅ Signed main app with entitlements"
           else
             echo "❌ Main executable not found: $MAIN_EXEC"
             exit 1
@@ -140,7 +141,8 @@ jobs:
             TEST_EXEC="$TEST_BUNDLE/TrollTouchUITests"
             if [ -f "$TEST_EXEC" ]; then
               echo "✅ Found test executable: $TEST_EXEC"
-              ldid -S "$TEST_EXEC"
+              # 测试bundle也可以用同样的权限，或者简单的伪签名
+              ldid -S"entitlements.plist" "$TEST_EXEC"
               echo "✅ Signed XCTest bundle"
             else
               echo "❌ Test executable not found: $TEST_EXEC"
