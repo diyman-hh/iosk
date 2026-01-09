@@ -116,14 +116,45 @@ jobs:
         run: |
           APP_PATH=$(find ./build -name "TrollTouch.app" -type d | head -n 1)
           echo "🔏 Signing binaries with ldid..."
+          echo "App path: $APP_PATH"
+          
+          # 显示app内容
+          echo "📂 App structure:"
+          ls -laR "$APP_PATH"
           
           # 签名主应用可执行文件
-          ldid -S "$APP_PATH/TrollTouch"
-          echo "✅ Signed main app"
+          MAIN_EXEC="$APP_PATH/TrollTouch"
+          if [ -f "$MAIN_EXEC" ]; then
+            echo "✅ Found main executable: $MAIN_EXEC"
+            ldid -S "$MAIN_EXEC"
+            echo "✅ Signed main app"
+          else
+            echo "❌ Main executable not found: $MAIN_EXEC"
+            exit 1
+          fi
           
           # 签名测试bundle
-          ldid -S "$APP_PATH/PlugIns/TrollTouchUITests.xctest/TrollTouchUITests"
-          echo "✅ Signed XCTest bundle"
+          TEST_BUNDLE="$APP_PATH/PlugIns/TrollTouchUITests.xctest"
+          if [ -d "$TEST_BUNDLE" ]; then
+            echo "✅ Found test bundle: $TEST_BUNDLE"
+            echo "📂 Test bundle contents:"
+            ls -la "$TEST_BUNDLE"
+            
+            TEST_EXEC="$TEST_BUNDLE/TrollTouchUITests"
+            if [ -f "$TEST_EXEC" ]; then
+              echo "✅ Found test executable: $TEST_EXEC"
+              ldid -S "$TEST_EXEC"
+              echo "✅ Signed XCTest bundle"
+            else
+              echo "❌ Test executable not found: $TEST_EXEC"
+              echo "Available files in bundle:"
+              find "$TEST_BUNDLE" -type f
+              exit 1
+            fi
+          else
+            echo "❌ Test bundle not found: $TEST_BUNDLE"
+            exit 1
+          fi
 
       - name: Package IPA
         run: |
