@@ -133,6 +133,40 @@ jobs:
             fi
           done
           
+          # Special handling for XCUIAutomation - search in multiple locations
+          echo "🔍 Searching for XCUIAutomation.framework..."
+          XCUIAUTOMATION_FOUND=false
+          
+          # Try PrivateFrameworks first
+          if [ -d "$XCODE_PRIVATE_FRAMEWORKS/XCUIAutomation.framework" ]; then
+            cp -R "$XCODE_PRIVATE_FRAMEWORKS/XCUIAutomation.framework" "$APP_PATH/PrivateFrameworks/"
+            echo "✅ XCUIAutomation.framework copied from PrivateFrameworks"
+            XCUIAUTOMATION_FOUND=true
+          fi
+          
+          # Try public Frameworks directory
+          if [ "$XCUIAUTOMATION_FOUND" = false ] && [ -d "$XCODE_FRAMEWORKS/Frameworks/XCUIAutomation.framework" ]; then
+            cp -R "$XCODE_FRAMEWORKS/Frameworks/XCUIAutomation.framework" "$APP_PATH/PrivateFrameworks/"
+            echo "✅ XCUIAutomation.framework copied from Frameworks"
+            XCUIAUTOMATION_FOUND=true
+          fi
+          
+          # Try XCUIAutomation module directory
+          if [ "$XCUIAUTOMATION_FOUND" = false ]; then
+            XCUIAUTOMATION_PATH="/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/System/Library/Frameworks/XCUIAutomation.framework"
+            if [ -d "$XCUIAUTOMATION_PATH" ]; then
+              cp -R "$XCUIAUTOMATION_PATH" "$APP_PATH/PrivateFrameworks/"
+              echo "✅ XCUIAutomation.framework copied from SDK"
+              XCUIAUTOMATION_FOUND=true
+            fi
+          fi
+          
+          if [ "$XCUIAUTOMATION_FOUND" = false ]; then
+            echo "⚠️ XCUIAutomation.framework not found in any location!"
+            echo "Searching all possible locations..."
+            find /Applications/Xcode.app -name "XCUIAutomation.framework" -type d 2>/dev/null | head -5
+          fi
+          
           # Also copy any other test-related frameworks
           for framework_name in "DTX" "DVT" "IDE"; do
             for framework in "$XCODE_PRIVATE_FRAMEWORKS"/${framework_name}*.framework; do
