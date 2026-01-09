@@ -44,16 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-/// XCUIDevice - represents the device under test
-@interface XCUIDevice : NSObject
-
-/// Shared device instance (class property in modern XCTest)
-@property(class, readonly) XCUIDevice *sharedDevice;
-
-/// Synthesize touch events
-- (void)synthesizeEvent:(XCSynthesizedEventRecord *)event
-             completion:(void (^)(NSError *_Nullable error))completion;
-
-@end
+/// Forward declaration - XCUIDevice is provided by XCTest framework
+@class XCUIDevice;
 
 NS_ASSUME_NONNULL_END
