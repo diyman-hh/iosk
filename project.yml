@@ -33,6 +33,8 @@ targets:
       - TrollTouch/TouchTestViewController.h
       - TrollTouch/AutomationClient.h
       - TrollTouch/AutomationClient.m
+      - TrollTouch/BundleLoader.h
+      - TrollTouch/BundleLoader.m
       - TrollTouch/GSEvent.h
       - TrollTouch/Info.plist
     dependencies:
