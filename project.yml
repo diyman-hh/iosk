@@ -29,8 +29,6 @@ targets:
       - TrollTouch/VisionHelper.h
       - TrollTouch/TouchSimulator.m
       - TrollTouch/TouchSimulator.h
-      - TrollTouch/XCTestTouchInjector.m
-      - TrollTouch/XCTestTouchInjector.h
       - TrollTouch/TouchTestViewController.m
       - TrollTouch/TouchTestViewController.h
       - TrollTouch/AutomationClient.h
