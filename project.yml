@@ -27,6 +27,8 @@ targets:
       - TrollTouch/ScreenCapture.h
       - TrollTouch/VisionHelper.m
       - TrollTouch/VisionHelper.h
+      - TrollTouch/TouchSimulator.m
+      - TrollTouch/TouchSimulator.h
       - TrollTouch/GSEvent.h
       - TrollTouch/Info.plist
     dependencies:
