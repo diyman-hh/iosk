@@ -35,7 +35,8 @@ class CustomHTTPHandler(http.server.SimpleHTTPRequestHandler):
     
     def send_custom_html(self):
         """Generate and send custom HTML page with large icons and copy buttons"""
-        local_ip = get_local_ip()
+        # local_ip = get_local_ip()
+        local_ip = "192.168.110.177"
         base_url = f"http://{local_ip}:{PORT}"
         
         # Find all IPA files
@@ -334,7 +335,8 @@ def run_server():
     socketserver.TCPServer.allow_reuse_address = True
     
     with socketserver.ThreadingTCPServer(("", PORT), CustomHTTPHandler) as httpd:
-        local_ip = get_local_ip()
+        #local_ip = get_local_ip()
+        local_ip = "192.168.110.177"
         base_url = f"http://{local_ip}:{PORT}"
         
         print(f"\n{'='*60}")
