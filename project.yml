@@ -1,0 +1,41 @@
+name: TrollTouch
+options:
+  bundleIdPrefix: com.trolltouch
+  deploymentTarget:
+    iOS: 14.0
+  xcodeVersion: 13.0
+
+targets:
+  TrollTouch:
+    type: application
+    platform: iOS
+    sources:
+      - path: TrollTouch
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.trolltouch.app
+      INFOPLIST_FILE: TrollTouch/Info.plist
+      IPHONEOS_DEPLOYMENT_TARGET: 14.0
+      TARGETED_DEVICE_FAMILY: "1,2" # iPhone and iPad
+      ENABLE_BITCODE: NO
+      # 链接必要的系统库
+      OTHER_LDFLAGS: 
+        - "-framework"
+        - "UIKit"
+        - "-framework"
+        - "Foundation"
+        - "-framework"
+        - "CoreGraphics"
+
+  TrollTouchUITests:
+    type: ui-test-bundle
+    platform: iOS
+    sources:
+      - path: TrollTouchUITests
+    dependencies:
+      - target: TrollTouch
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.trolltouch.app.uitests
+      INFOPLIST_FILE: TrollTouchUITests/Info.plist
+      TEST_TARGET_NAME: TrollTouch
+      # 关闭一些严格的检查，方便旧代码编译
+      CLANG_ENABLE_MODULES: YES
