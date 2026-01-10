@@ -1,7 +1,5 @@
 #import "TouchTestViewController.h"
 #import "AccessibilityAutomator.h"
-#import "AgentClient.h"
-
 
 @interface TouchTestViewController ()
 @property(nonatomic, strong) UIView *canvasView;
@@ -15,7 +13,6 @@
 - (void)clearCanvas;
 - (void)closeTest;
 - (void)toggleTest:(UIButton *)sender;
-- (void)startAutoTest;
 @end
 
 @implementation TouchTestViewController
@@ -157,97 +154,6 @@
                                               blue:0.3
                                              alpha:1.0]; // Red
     [self startAutoTest];
-  }
-}
-
-- (void)startAutoTest {
-  if (!self.isTesting)
-    return;
-
-  self.statusLabel.text = @"Connecting...";
-  [self addLog:@"========== RANDOM TEST STARTED =========="];
-
-  // Check Agent Status
-  [[AgentClient sharedClient] checkStatus:^(BOOL online, NSDictionary *info) {
-    if (!self.isTesting)
-      return;
-
-    if (online) {
-      [self addLog:@"✅ Agent Connected"];
-      [self addLog:@"🚀 Running loop (Tap/Swipe)..."];
-
-      // Start Loop in background
-      dispatch_async(
-          dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            [self runRandomLoop];
-          });
-    } else {
-      [self addLog:@"❌ Agent Offline!"];
-      [self toggleTest:(UIButton *)[self.view viewWithTag:100]]; // Reset button
-    }
-  }];
-}
-
-- (void)runRandomLoop {
-  int count = 0;
-  while (self.isTesting) {
-    count++;
-
-    // Randomly choose Tap (70%) or Swipe (30%)
-    BOOL doSwipe = (arc4random() % 100) > 70;
-
-    // Generate coordinates within the WHITE CANVAS area (top 60%)
-    // Normalized Y should be 0.1 to 0.5 to stay safely inside canvas
-    float yMin = 0.1;
-    float yMax = 0.5;
-    float xMin = 0.1;
-    float xMax = 0.9;
-
-    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
-
-    if (doSwipe) {
-      float startX = xMin + (arc4random() % 100) / 100.0 * (xMax - xMin);
-      float startY = yMin + (arc4random() % 100) / 100.0 * (yMax - yMin);
-      float endX = xMin + (arc4random() % 100) / 100.0 * (xMax - xMin);
-      float endY = yMin + (arc4random() % 100) / 100.0 * (yMax - yMin);
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        self.statusLabel.text =
-            [NSString stringWithFormat:@"#%d: Swiping...", count];
-      });
-
-      [[AgentClient sharedClient] swipeFrom:CGPointMake(startX, startY)
-                                         to:CGPointMake(endX, endY)
-                                   duration:0.3
-                                 completion:^(BOOL success, NSError *error) {
-                                   dispatch_semaphore_signal(sem);
-                                 }];
-
-    } else {
-      float x = xMin + (arc4random() % 100) / 100.0 * (xMax - xMin);
-      float y = yMin + (arc4random() % 100) / 100.0 * (yMax - yMin);
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        self.statusLabel.text =
-            [NSString stringWithFormat:@"#%d: Tapping...", count];
-      });
-
-      [[AgentClient sharedClient] tapAtPoint:CGPointMake(x, y)
-                                  completion:^(BOOL success, NSError *error) {
-                                    if (!success) {
-                                      NSLog(@"Tap failed: %@", error);
-                                    }
-                                    dispatch_semaphore_signal(sem);
-                                  }];
-    }
-
-    // Wait for command to finish
-    dispatch_semaphore_wait(sem,
-                            dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC));
-
-    // Sleep random time (0.2s - 1.0s)
-    useconds_t sleepTime = 200000 + (arc4random() % 800000);
-    usleep(sleepTime);
   }
 }
 
