@@ -114,6 +114,28 @@
   [self.view addSubview:closeBtn];
 }
 
+- (void)addLog:(NSString *)message {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    NSString *timestamp =
+        [NSDateFormatter localizedStringFromDate:[NSDate date]
+                                       dateStyle:NSDateFormatterNoStyle
+                                       timeStyle:NSDateFormatterMediumStyle];
+    NSString *logEntry =
+        [NSString stringWithFormat:@"[%@] %@\n", timestamp, message];
+
+    // Append text
+    self.logTextView.text =
+        [self.logTextView.text stringByAppendingString:logEntry];
+
+    // Auto-scroll safely
+    if (self.logTextView.text.length > 0) {
+      NSRange range = NSMakeRange(self.logTextView.text.length - 1, 1);
+      [self.logTextView scrollRangeToVisible:range];
+    }
+  });
+  NSLog(@"[TouchTest] %@", message);
+}
+
 - (void)toggleTest:(UIButton *)sender {
   if (self.isTesting) {
     // Stop
