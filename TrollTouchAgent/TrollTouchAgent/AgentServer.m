@@ -8,6 +8,11 @@
 #import "AgentServer.h"
 #import "TouchInjector.h"
 #import <UIKit/UIKit.h>
+#import <arpa/inet.h>
+#import <netinet/in.h>
+#import <sys/socket.h>
+#import <unistd.h>
+
 
 @interface AgentServer () <NSStreamDelegate>
 @property(nonatomic, strong) NSInputStream *inputStream;
