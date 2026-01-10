@@ -21,10 +21,8 @@ targets:
       - TrollTouch/ScheduleManager.h
       - TrollTouch/AutomationManager.m
       - TrollTouch/AutomationManager.h
-      - TrollTouch/AgentClient.h
-      - TrollTouch/AgentClient.m
-      - TrollTouch/SharedCommandQueue.h
-      - TrollTouch/SharedCommandQueue.m
+      - TrollTouch/AccessibilityAutomator.h
+      - TrollTouch/AccessibilityAutomator.m
       - TrollTouch/GSEventHelper.m
       - TrollTouch/GSEventHelper.h
       - TrollTouch/ScreenCapture.m
