@@ -36,43 +36,30 @@
 
 - (void)setupLogFile {
   NSFileManager *fm = [NSFileManager defaultManager];
-  NSError *error = nil;
 
-  // Try multiple locations in order of preference
-  NSArray *possiblePaths = @[
-    @"/var/mobile/Downloads/TrollTouch_Logs",
-    [NSHomeDirectory()
-        stringByAppendingPathComponent:@"Downloads/TrollTouch_Logs"],
-    [[NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask,
-                                          YES) firstObject]
-        stringByAppendingPathComponent:@"TrollTouch_Logs"]
-  ];
+  // Use the EXACT same path as old TrollTouch
+  NSString *logDir = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
 
-  NSString *logDir = nil;
+  // Clean up if it's a file but we need a directory
+  BOOL isDir = NO;
+  if ([fm fileExistsAtPath:logDir isDirectory:&isDir] && !isDir) {
+    [fm removeItemAtPath:logDir error:nil];
+  }
 
-  for (NSString *path in possiblePaths) {
-    // Try to create directory
-    if (![fm fileExistsAtPath:path]) {
-      [fm createDirectoryAtPath:path
-          withIntermediateDirectories:YES
-                           attributes:nil
-                                error:&error];
-    }
-
-    // Check if we can write to it
-    if ([fm isWritableFileAtPath:[path stringByDeletingLastPathComponent]]) {
-      logDir = path;
-      NSLog(@"[FileLogger] ✅ Using log directory: %@", logDir);
-      break;
-    } else {
-      NSLog(@"[FileLogger] ⚠️ Cannot write to: %@", path);
+  // Create directory if missing with full permissions
+  if (![fm fileExistsAtPath:logDir]) {
+    NSError *error = nil;
+    [fm createDirectoryAtPath:logDir
+        withIntermediateDirectories:YES
+                         attributes:@{NSFilePosixPermissions : @0777}
+                              error:&error];
+    if (error) {
+      NSLog(@"[FileLogger] ❌ Failed to create log directory: %@", error);
+      return;
     }
   }
 
-  if (!logDir) {
-    NSLog(@"[FileLogger] ❌ No writable directory found!");
-    return;
-  }
+  NSLog(@"[FileLogger] ✅ Using log directory: %@", logDir);
 
   // Create log file with timestamp
   NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
@@ -82,20 +69,18 @@
 
   self.logFilePath = [logDir stringByAppendingPathComponent:filename];
 
-  // Create file
-  BOOL created = [fm createFileAtPath:self.logFilePath
-                             contents:nil
-                           attributes:nil];
-  if (!created) {
-    NSLog(@"[FileLogger] ❌ Failed to create log file at: %@",
-          self.logFilePath);
-    return;
-  }
+  // Create file with full permissions
+  NSDictionary *attributes = @{NSFilePosixPermissions : @0666};
+  [[NSData data] writeToFile:self.logFilePath
+                     options:NSDataWritingAtomic
+                       error:nil];
+  [fm setAttributes:attributes ofItemAtPath:self.logFilePath error:nil];
 
   // Open file handle
   self.fileHandle = [NSFileHandle fileHandleForWritingAtPath:self.logFilePath];
   if (!self.fileHandle) {
-    NSLog(@"[FileLogger] ❌ Failed to open file handle");
+    NSLog(@"[FileLogger] ❌ Failed to open file handle for: %@",
+          self.logFilePath);
     return;
   }
 
