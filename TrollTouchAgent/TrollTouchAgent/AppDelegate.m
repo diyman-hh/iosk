@@ -4,9 +4,11 @@
 //
 
 #import "AppDelegate.h"
+#import "AgentSelfTest.h"
 #import "SharedCommandQueue.h"
 #import "TouchInjector.h"
 #import <AVFoundation/AVFoundation.h>
+
 
 @interface AppDelegate ()
 @property(nonatomic, strong) AVAudioPlayer *audioPlayer;
@@ -28,11 +30,12 @@
   UILabel *label = [[UILabel alloc]
       initWithFrame:CGRectMake(20, 100, self.window.bounds.size.width - 40,
                                200)];
-  label.text = @"TrollTouchAgent\n\n运行中...\n\nApp Groups IPC Ready";
+  label.text = @"TrollTouchAgent\n\n运行中...\n\nApp Groups IPC Ready\n\nCheck "
+               @"Console for Self-Test";
   label.textColor = [UIColor whiteColor];
   label.textAlignment = NSTextAlignmentCenter;
   label.numberOfLines = 0;
-  label.font = [UIFont systemFontOfSize:18];
+  label.font = [UIFont systemFontOfSize:16];
   [rootVC.view addSubview:label];
 
   self.window.rootViewController = rootVC;
@@ -43,6 +46,12 @@
 
   // 启动 App Groups 监听
   [self startCommandListener];
+
+  // 运行自测试
+  dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC),
+                 dispatch_get_main_queue(), ^{
+                   [AgentSelfTest runAllTests];
+                 });
 
   NSLog(@"[Agent] ✅ Agent initialization complete");
 
