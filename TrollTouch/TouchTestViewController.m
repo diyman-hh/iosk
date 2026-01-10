@@ -57,6 +57,8 @@
   [self setupButtons];
 }
 
+@property(nonatomic, assign) BOOL isTesting;
+
 - (void)setupButtons {
   CGFloat buttonWidth = 120;
   CGFloat buttonHeight = 50;
@@ -74,12 +76,13 @@
       forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:clearBtn];
 
-  // Test button
+  // Test button (Start/Stop)
   UIButton *testBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+  testBtn.tag = 100; // Tag to find it later
   testBtn.frame =
       CGRectMake(self.view.bounds.size.width - buttonWidth - spacing, startY,
                  buttonWidth, buttonHeight);
-  [testBtn setTitle:@"Start Test" forState:UIControlStateNormal];
+  [testBtn setTitle:@"Start Random" forState:UIControlStateNormal];
   testBtn.backgroundColor = [UIColor colorWithRed:0.2
                                             green:0.6
                                              blue:1.0
@@ -88,7 +91,7 @@
   [testBtn setTitleColor:[UIColor whiteColor] forState:UIControlStateNormal];
   testBtn.layer.cornerRadius = 8;
   [testBtn addTarget:self
-                action:@selector(startAutoTest)
+                action:@selector(toggleTest:)
       forControlEvents:UIControlEventTouchUpInside];
   [self.view addSubview:testBtn];
 
@@ -106,153 +109,117 @@
   [self.view addSubview:closeBtn];
 }
 
-- (void)clearCanvas {
-  self.pathLayer.path = nil;
-  for (CAShapeLayer *layer in self.tapLayers) {
-    [layer removeFromSuperlayer];
+- (void)toggleTest:(UIButton *)sender {
+  if (self.isTesting) {
+    // Stop
+    self.isTesting = NO;
+    [sender setTitle:@"Start Random" forState:UIControlStateNormal];
+    sender.backgroundColor = [UIColor colorWithRed:0.2
+                                             green:0.6
+                                              blue:1.0
+                                             alpha:1.0]; // Blue
+    [self addLog:@"⏹️ Random Test Stopped"];
+  } else {
+    // Start
+    self.isTesting = YES;
+    [sender setTitle:@"Stop Test" forState:UIControlStateNormal];
+    sender.backgroundColor = [UIColor colorWithRed:1.0
+                                             green:0.3
+                                              blue:0.3
+                                             alpha:1.0]; // Red
+    [self startAutoTest];
   }
-  [self.tapLayers removeAllObjects];
-  self.statusLabel.text = @"Canvas Cleared";
-  NSLog(@"[TouchTest] Canvas cleared");
-}
-
-- (void)closeTest {
-  [self dismissViewControllerAnimated:YES completion:nil];
-}
-
-- (void)addLog:(NSString *)message {
-  dispatch_async(dispatch_get_main_queue(), ^{
-    NSString *timestamp =
-        [NSDateFormatter localizedStringFromDate:[NSDate date]
-                                       dateStyle:NSDateFormatterNoStyle
-                                       timeStyle:NSDateFormatterMediumStyle];
-    NSString *logEntry =
-        [NSString stringWithFormat:@"[%@] %@\n", timestamp, message];
-    self.logTextView.text =
-        [self.logTextView.text stringByAppendingString:logEntry];
-
-    // Auto-scroll to bottom
-    NSRange range = NSMakeRange(self.logTextView.text.length - 1, 1);
-    [self.logTextView scrollRangeToVisible:range];
-  });
-  NSLog(@"[TouchTest] %@", message);
 }
 
 - (void)startAutoTest {
-  self.statusLabel.text = @"Testing via AgentClient...";
-  [self addLog:@"========== AGENT CLIENT TEST STARTED =========="];
-  [self addLog:@"📡 Connecting to TrollTouchAgent..."];
+  if (!self.isTesting)
+    return;
 
-  [self clearCanvas];
+  self.statusLabel.text = @"Connecting...";
+  [self addLog:@"========== RANDOM TEST STARTED =========="];
 
-  // First check if Agent is online
+  // Check Agent Status
   [[AgentClient sharedClient] checkStatus:^(BOOL online, NSDictionary *info) {
-    if (online) {
-      [self addLog:[NSString stringWithFormat:@"✅ Agent is ONLINE: %@", info]];
-      [self addLog:@"🚀 Starting touch injection tests..."];
+    if (!self.isTesting)
+      return;
 
-      // Run test in background
+    if (online) {
+      [self addLog:@"✅ Agent Connected"];
+      [self addLog:@"🚀 Running loop (Tap/Swipe)..."];
+
+      // Start Loop in background
       dispatch_async(
           dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            [self runAutoTest];
+            [self runRandomLoop];
           });
     } else {
-      [self addLog:@"❌ Agent is OFFLINE"];
-      [self addLog:@"⚠️ Please make sure TrollTouchAgent is running!"];
-      [self addLog:@"Steps:"];
-      [self addLog:@"1. Open TrollTouchAgent app"];
-      [self addLog:@"2. Wait for 'HTTP Server: localhost:8100' message"];
-      [self addLog:@"3. Return to this app and try again"];
-
-      dispatch_async(dispatch_get_main_queue(), ^{
-        self.statusLabel.text = @"❌ Agent Offline";
-      });
+      [self addLog:@"❌ Agent Offline!"];
+      [self toggleTest:(UIButton *)[self.view viewWithTag:100]]; // Reset button
     }
   }];
 }
 
-- (void)runAutoTest {
-  // Test 5 random swipes via AgentClient
-  [self addLog:@""];
-  [self addLog:@"--- Testing 5 Swipes via AgentClient ---"];
+- (void)runRandomLoop {
+  int count = 0;
+  while (self.isTesting) {
+    count++;
 
-  for (int i = 0; i < 5; i++) {
-    float startX = 0.2 + (arc4random() % 60) / 100.0;
-    float startY = 0.2 + (arc4random() % 60) / 100.0;
-    float endX = 0.2 + (arc4random() % 60) / 100.0;
-    float endY = 0.2 + (arc4random() % 60) / 100.0;
+    // Randomly choose Tap (70%) or Swipe (30%)
+    BOOL doSwipe = (arc4random() % 100) > 70;
 
-    [self addLog:[NSString stringWithFormat:
-                               @"👉 Swipe #%d: (%.3f, %.3f) → (%.3f, %.3f)",
-                               i + 1, startX, startY, endX, endY]];
+    // Generate coordinates within the WHITE CANVAS area (top 60%)
+    // Normalized Y should be 0.1 to 0.5 to stay safely inside canvas
+    float yMin = 0.1;
+    float yMax = 0.5;
+    float xMin = 0.1;
+    float xMax = 0.9;
 
-    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
 
-    [[AgentClient sharedClient]
-         swipeFrom:CGPointMake(startX, startY)
-                to:CGPointMake(endX, endY)
-          duration:0.3
-        completion:^(BOOL success, NSError *error) {
-          if (success) {
-            [self addLog:[NSString
-                             stringWithFormat:@"✅ Swipe #%d SUCCESS", i + 1]];
-          } else {
-            [self addLog:[NSString
-                             stringWithFormat:@"❌ Swipe #%d FAILED: %@", i + 1,
-                                              error.localizedDescription]];
-          }
-          dispatch_semaphore_signal(semaphore);
-        }];
+    if (doSwipe) {
+      float startX = xMin + (arc4random() % 100) / 100.0 * (xMax - xMin);
+      float startY = yMin + (arc4random() % 100) / 100.0 * (yMax - yMin);
+      float endX = xMin + (arc4random() % 100) / 100.0 * (xMax - xMin);
+      float endY = yMin + (arc4random() % 100) / 100.0 * (yMax - yMin);
 
-    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
-    usleep(500000); // 0.5s between swipes
+      dispatch_async(dispatch_get_main_queue(), ^{
+        self.statusLabel.text =
+            [NSString stringWithFormat:@"#%d: Swiping...", count];
+      });
 
-    dispatch_async(dispatch_get_main_queue(), ^{
-      self.statusLabel.text =
-          [NSString stringWithFormat:@"Swipe Test %d/5", i + 1];
-    });
+      [[AgentClient sharedClient] swipeFrom:CGPointMake(startX, startY)
+                                         to:CGPointMake(endX, endY)
+                                   duration:0.3
+                                 completion:^(BOOL success, NSError *error) {
+                                   dispatch_semaphore_signal(sem);
+                                 }];
+
+    } else {
+      float x = xMin + (arc4random() % 100) / 100.0 * (xMax - xMin);
+      float y = yMin + (arc4random() % 100) / 100.0 * (yMax - yMin);
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        self.statusLabel.text =
+            [NSString stringWithFormat:@"#%d: Tapping...", count];
+      });
+
+      [[AgentClient sharedClient] tapAtPoint:CGPointMake(x, y)
+                                  completion:^(BOOL success, NSError *error) {
+                                    if (!success) {
+                                      NSLog(@"Tap failed: %@", error);
+                                    }
+                                    dispatch_semaphore_signal(sem);
+                                  }];
+    }
+
+    // Wait for command to finish
+    dispatch_semaphore_wait(sem,
+                            dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC));
+
+    // Sleep random time (0.2s - 1.0s)
+    useconds_t sleepTime = 200000 + (arc4random() % 800000);
+    usleep(sleepTime);
   }
-
-  // Test 5 random taps via AgentClient
-  [self addLog:@""];
-  [self addLog:@"--- Testing 5 Taps via AgentClient ---"];
-
-  for (int i = 0; i < 5; i++) {
-    float tapX = 0.2 + (arc4random() % 60) / 100.0;
-    float tapY = 0.2 + (arc4random() % 60) / 100.0;
-
-    [self addLog:[NSString stringWithFormat:@"👆 Tap #%d: (%.3f, %.3f)", i + 1,
-                                            tapX, tapY]];
-
-    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
-
-    [[AgentClient sharedClient]
-        tapAtPoint:CGPointMake(tapX, tapY)
-        completion:^(BOOL success, NSError *error) {
-          if (success) {
-            [self addLog:[NSString
-                             stringWithFormat:@"✅ Tap #%d SUCCESS", i + 1]];
-          } else {
-            [self addLog:[NSString
-                             stringWithFormat:@"❌ Tap #%d FAILED: %@", i + 1,
-                                              error.localizedDescription]];
-          }
-          dispatch_semaphore_signal(semaphore);
-        }];
-
-    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
-    usleep(300000); // 0.3s between taps
-
-    dispatch_async(dispatch_get_main_queue(), ^{
-      self.statusLabel.text =
-          [NSString stringWithFormat:@"Tap Test %d/5", i + 1];
-    });
-  }
-
-  dispatch_async(dispatch_get_main_queue(), ^{
-    self.statusLabel.text = @"Test Completed! Check logs";
-    NSLog(@"[TouchTest] ========== WEBDRIVERAGENT TEST COMPLETED ==========");
-  });
 }
 
 #pragma mark - Touch Event Handling
