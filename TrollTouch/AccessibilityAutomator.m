@@ -4,11 +4,12 @@
 //
 
 #import "AccessibilityAutomator.h"
-#import <objc/runtime.h>
+#import <XCTest/XCTest.h>
 
 @interface AccessibilityAutomator ()
 @property(nonatomic, strong) NSTimer *autoSwipeTimer;
 @property(nonatomic, assign) BOOL running;
+@property(nonatomic, strong) XCUIApplication *app;
 @end
 
 @implementation AccessibilityAutomator
@@ -25,9 +26,12 @@
 - (instancetype)init {
   self = [super init];
   if (self) {
-    _swipeInterval = 3.0; // 默认 3 秒滑动一次
-    _swipeDuration = 0.3; // 默认滑动持续 0.3 秒
+    _swipeInterval = 3.0;
+    _swipeDuration = 0.3;
     _running = NO;
+
+    // 初始化 XCUIApplication
+    _app = [[XCUIApplication alloc] init];
   }
   return self;
 }
@@ -35,39 +39,19 @@
 #pragma mark - Permission
 
 - (BOOL)hasAccessibilityPermission {
-  // 在 iOS 上，我们无法直接检查 Accessibility 权限
-  // 但可以尝试访问 Accessibility 元素来判断
-  return YES; // 简化处理，实际使用时会在操作时检测
+  return YES;
 }
 
 - (void)requestAccessibilityPermission {
-  // iOS 不提供直接的 API 请求 Accessibility 权限
-  // 需要引导用户到设置中手动开启
-  NSString *message = @"请前往 设置 > 辅助功能 > 触控 > 辅助触控，启用 "
-                      @"TrollTouch 的辅助功能权限";
+  NSString *message = @"此功能使用 XCTest 框架模拟触摸，无需额外权限";
 
   UIAlertController *alert =
-      [UIAlertController alertControllerWithTitle:@"需要辅助功能权限"
+      [UIAlertController alertControllerWithTitle:@"提示"
                                           message:message
                                    preferredStyle:UIAlertControllerStyleAlert];
 
-  [alert
-      addAction:
-          [UIAlertAction
-              actionWithTitle:@"去设置"
-                        style:UIAlertActionStyleDefault
-                      handler:^(UIAlertAction *_Nonnull action) {
-                        [[UIApplication sharedApplication]
-                                      openURL:
-                                          [NSURL
-                                              URLWithString:
-                                                  UIApplicationOpenSettingsURLString]
-                                      options:@{}
-                            completionHandler:nil];
-                      }]];
-
-  [alert addAction:[UIAlertAction actionWithTitle:@"取消"
-                                            style:UIAlertActionStyleCancel
+  [alert addAction:[UIAlertAction actionWithTitle:@"确定"
+                                            style:UIAlertActionStyleDefault
                                           handler:nil]];
 
   UIViewController *rootVC =
@@ -83,8 +67,7 @@
     return;
   }
 
-  NSLog(@"[AccessibilityAutomator] Starting auto swipe with interval: %.1fs",
-        self.swipeInterval);
+  NSLog(@"[AccessibilityAutomator] Starting auto swipe with XCTest framework");
   self.running = YES;
 
   // 立即执行一次
@@ -118,7 +101,7 @@
 #pragma mark - Gesture Operations
 
 - (void)performSwipeUp {
-  NSLog(@"[AccessibilityAutomator] Performing swipe up");
+  NSLog(@"[AccessibilityAutomator] Performing swipe up with XCTest");
 
   CGRect screenBounds = [[UIScreen mainScreen] bounds];
   CGFloat screenHeight = screenBounds.size.height;
@@ -134,7 +117,7 @@
 }
 
 - (void)performSwipeDown {
-  NSLog(@"[AccessibilityAutomator] Performing swipe down");
+  NSLog(@"[AccessibilityAutomator] Performing swipe down with XCTest");
 
   CGRect screenBounds = [[UIScreen mainScreen] bounds];
   CGFloat screenHeight = screenBounds.size.height;
@@ -149,94 +132,66 @@
 }
 
 - (void)performTapAtPoint:(CGPoint)point {
-  NSLog(@"[AccessibilityAutomator] Performing tap at (%.1f, %.1f)", point.x,
-        point.y);
+  NSLog(@"[AccessibilityAutomator] Performing tap at (%.1f, %.1f) with XCTest",
+        point.x, point.y);
   [self simulateTapAtPoint:point];
 }
 
-#pragma mark - Low-Level Simulation
+#pragma mark - XCTest-Based Simulation
 
 - (void)simulateSwipeFromPoint:(CGPoint)start
                        toPoint:(CGPoint)end
                       duration:(NSTimeInterval)duration {
-  // 使用 UITouch 私有 API 模拟触摸
-  // 注意：这种方法只能在当前应用内工作
+  @try {
+    // 使用 XCUICoordinate 创建坐标
+    CGRect screenBounds = [[UIScreen mainScreen] bounds];
 
-  UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
-  if (!keyWindow) {
-    NSLog(@"[AccessibilityAutomator] No key window found");
-    return;
+    // 转换为归一化坐标 (0-1)
+    CGFloat normalizedStartX = start.x / screenBounds.size.width;
+    CGFloat normalizedStartY = start.y / screenBounds.size.height;
+    CGFloat normalizedEndX = end.x / screenBounds.size.width;
+    CGFloat normalizedEndY = end.y / screenBounds.size.height;
+
+    NSLog(@"[AccessibilityAutomator] Swipe from (%.3f, %.3f) to (%.3f, %.3f)",
+          normalizedStartX, normalizedStartY, normalizedEndX, normalizedEndY);
+
+    // 创建起始和结束坐标
+    XCUICoordinate *startCoordinate = [self.app
+        coordinateWithNormalizedOffset:CGVectorMake(normalizedStartX,
+                                                    normalizedStartY)];
+    XCUICoordinate *endCoordinate =
+        [self.app coordinateWithNormalizedOffset:CGVectorMake(normalizedEndX,
+                                                              normalizedEndY)];
+
+    // 执行滑动
+    [startCoordinate pressForDuration:0.1 thenDragToCoordinate:endCoordinate];
+
+    NSLog(@"[AccessibilityAutomator] ✅ Swipe executed successfully");
+  } @catch (NSException *exception) {
+    NSLog(@"[AccessibilityAutomator] ❌ Swipe failed: %@", exception.reason);
   }
-
-  // 创建触摸事件序列
-  [self sendTouchEvent:UITouchPhaseBegan atPoint:start inWindow:keyWindow];
-
-  // 计算中间点
-  int steps = (int)(duration * 60); // 60fps
-  for (int i = 1; i < steps; i++) {
-    CGFloat progress = (CGFloat)i / steps;
-    CGPoint currentPoint = CGPointMake(start.x + (end.x - start.x) * progress,
-                                       start.y + (end.y - start.y) * progress);
-
-    dispatch_after(
-        dispatch_time(DISPATCH_TIME_NOW,
-                      (int64_t)(i * duration / steps * NSEC_PER_SEC)),
-        dispatch_get_main_queue(), ^{
-          [self sendTouchEvent:UITouchPhaseMoved
-                       atPoint:currentPoint
-                      inWindow:keyWindow];
-        });
-  }
-
-  // 结束触摸
-  dispatch_after(
-      dispatch_time(DISPATCH_TIME_NOW, (int64_t)(duration * NSEC_PER_SEC)),
-      dispatch_get_main_queue(), ^{
-        [self sendTouchEvent:UITouchPhaseEnded atPoint:end inWindow:keyWindow];
-      });
 }
 
 - (void)simulateTapAtPoint:(CGPoint)point {
-  UIWindow *keyWindow = [[UIApplication sharedApplication] keyWindow];
-  if (!keyWindow) {
-    return;
+  @try {
+    CGRect screenBounds = [[UIScreen mainScreen] bounds];
+
+    // 转换为归一化坐标
+    CGFloat normalizedX = point.x / screenBounds.size.width;
+    CGFloat normalizedY = point.y / screenBounds.size.height;
+
+    NSLog(@"[AccessibilityAutomator] Tap at (%.3f, %.3f)", normalizedX,
+          normalizedY);
+
+    // 创建坐标并点击
+    XCUICoordinate *coordinate = [self.app
+        coordinateWithNormalizedOffset:CGVectorMake(normalizedX, normalizedY)];
+    [coordinate tap];
+
+    NSLog(@"[AccessibilityAutomator] ✅ Tap executed successfully");
+  } @catch (NSException *exception) {
+    NSLog(@"[AccessibilityAutomator] ❌ Tap failed: %@", exception.reason);
   }
-
-  [self sendTouchEvent:UITouchPhaseBegan atPoint:point inWindow:keyWindow];
-
-  dispatch_after(
-      dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)),
-      dispatch_get_main_queue(), ^{
-        [self sendTouchEvent:UITouchPhaseEnded
-                     atPoint:point
-                    inWindow:keyWindow];
-      });
-}
-
-- (void)sendTouchEvent:(UITouchPhase)phase
-               atPoint:(CGPoint)point
-              inWindow:(UIWindow *)window {
-  // 简化版本：直接使用 UIView 的手势识别
-  // 这种方法在应用内模拟触摸更可靠
-
-  UIView *targetView = [window hitTest:point withEvent:nil];
-  if (!targetView) {
-    targetView = window;
-  }
-
-  NSLog(@"[AccessibilityAutomator] Sending touch %ld to view: %@", (long)phase,
-        NSStringFromClass([targetView class]));
-
-  // 由于我们无法可靠地创建 UIEvent，改用更简单的方法
-  // 直接触发视图层级的响应
-
-  // 注意：这种方法的局限性是只能在当前应用内工作
-  // 对于刷视频等场景，需要应用本身支持手势
-
-  // 简化实现：只记录日志，实际触摸需要使用其他方法
-  NSLog(@"[AccessibilityAutomator] Touch simulation at (%.1f, %.1f) - Note: "
-        @"In-app touch simulation has limitations",
-        point.x, point.y);
 }
 
 @end
