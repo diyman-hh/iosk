@@ -10,8 +10,10 @@
 #import "TouchInjector.h"
 #import <AVFoundation/AVFoundation.h>
 
+
 @interface AppDelegate ()
 @property(nonatomic, strong) AVAudioPlayer *audioPlayer;
+@property(nonatomic, strong) UITextView *logTextView;
 @end
 
 @implementation AppDelegate
@@ -29,19 +31,35 @@
   UIViewController *rootVC = [[UIViewController alloc] init];
   rootVC.view.backgroundColor = [UIColor blackColor];
 
+  // Title Label
   UILabel *label = [[UILabel alloc]
-      initWithFrame:CGRectMake(20, 100, self.window.bounds.size.width - 40,
-                               200)];
-  label.text = @"TrollTouchAgent\n\n运行中...\n\nApp Groups IPC Ready\n\nCheck "
-               @"Console for Self-Test";
+      initWithFrame:CGRectMake(20, 60, self.window.bounds.size.width - 40, 80)];
+  label.text = @"TrollTouchAgent\n运行中...\nApp Groups IPC Ready";
   label.textColor = [UIColor whiteColor];
   label.textAlignment = NSTextAlignmentCenter;
   label.numberOfLines = 0;
-  label.font = [UIFont systemFontOfSize:16];
+  label.font = [UIFont boldSystemFontOfSize:16];
   [rootVC.view addSubview:label];
+
+  // Log TextView - 显示实时日志
+  CGFloat logY = 150;
+  self.logTextView = [[UITextView alloc]
+      initWithFrame:CGRectMake(10, logY, self.window.bounds.size.width - 20,
+                               self.window.bounds.size.height - logY - 20)];
+  self.logTextView.backgroundColor = [UIColor colorWithWhite:0.1 alpha:1.0];
+  self.logTextView.textColor = [UIColor greenColor];
+  self.logTextView.font = [UIFont fontWithName:@"Menlo" size:10];
+  self.logTextView.editable = NO;
+  self.logTextView.text = @"";
+  [rootVC.view addSubview:self.logTextView];
 
   self.window.rootViewController = rootVC;
   [self.window makeKeyAndVisible];
+
+  // 添加日志到 UI
+  [self addLog:@"[Agent] 🚀 TrollTouchAgent Starting..."];
+  [self addLog:[NSString stringWithFormat:@"[Agent] 📁 Log file: %@",
+                                          [logger getLogPath] ?: @"FAILED"]];
 
   // 启动后台保活
   [self startBackgroundKeepAlive];
@@ -55,23 +73,45 @@
                    [AgentSelfTest runAllTests];
                  });
 
-  NSLog(@"[Agent] ✅ Agent initialization complete");
+  [logger log:@"[Agent] ✅ Agent initialization complete"];
+  [self addLog:@"[Agent] ✅ Agent initialization complete"];
 
   return YES;
+}
+
+- (void)addLog:(NSString *)message {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
+    [formatter setDateFormat:@"HH:mm:ss"];
+    NSString *timestamp = [formatter stringFromDate:[NSDate date]];
+    NSString *logEntry =
+        [NSString stringWithFormat:@"[%@] %@\n", timestamp, message];
+
+    self.logTextView.text =
+        [self.logTextView.text stringByAppendingString:logEntry];
+
+    // Auto-scroll to bottom
+    NSRange range = NSMakeRange(self.logTextView.text.length - 1, 1);
+    [self.logTextView scrollRangeToVisible:range];
+  });
 }
 
 - (void)startCommandListener {
   FileLogger *logger = [FileLogger sharedLogger];
   [logger log:@"[Agent] 👂 Starting App Groups command listener..."];
+  [self addLog:@"[Agent] 👂 Starting command listener..."];
 
   [[SharedCommandQueue sharedQueue] startListeningWithHandler:^(
                                         NSDictionary *command) {
     [logger log:[NSString stringWithFormat:@"[Agent] 📥 Received command: %@",
                                            command]];
+    [self addLog:[NSString
+                     stringWithFormat:@"📥 Command: %@", command[@"action"]]];
     [self handleCommand:command];
   }];
 
   [logger log:@"[Agent] ✅ Command listener started"];
+  [self addLog:@"[Agent] ✅ Listener started"];
 }
 
 - (void)handleCommand:(NSDictionary *)command {
@@ -83,6 +123,7 @@
   [logger log:[NSString
                   stringWithFormat:@"[Agent] 📥 Handling command: %@ (ID: %@)",
                                    action, commandId]];
+  [self addLog:[NSString stringWithFormat:@"🔧 Handling: %@", action]];
 
   BOOL success = NO;
   NSString *errorMessage = nil;
@@ -94,10 +135,14 @@
         log:[NSString
                 stringWithFormat:@"[Agent] 👆 Executing tap at (%.3f, %.3f)", x,
                                  y]];
+    [self addLog:[NSString stringWithFormat:@"👆 Tap: (%.2f, %.2f)", x, y]];
     success = [[TouchInjector sharedInjector] tapAtPoint:CGPointMake(x, y)];
     [logger log:[NSString stringWithFormat:@"[Agent] %@ Tap result: %@",
                                            success ? @"✅" : @"❌",
                                            success ? @"SUCCESS" : @"FAILED"]];
+    [self addLog:[NSString stringWithFormat:@"%@ Tap: %@",
+                                            success ? @"✅" : @"❌",
+                                            success ? @"OK" : @"FAIL"]];
   } else if ([action isEqualToString:@"swipe"]) {
     CGFloat x1 = [command[@"x1"] floatValue];
     CGFloat y1 = [command[@"y1"] floatValue];
@@ -107,16 +152,23 @@
     [logger log:[NSString stringWithFormat:@"[Agent] 👉 Executing swipe from "
                                            @"(%.3f, %.3f) to (%.3f, %.3f)",
                                            x1, y1, x2, y2]];
+    [self
+        addLog:[NSString stringWithFormat:@"👉 Swipe: (%.2f,%.2f)→(%.2f,%.2f)",
+                                          x1, y1, x2, y2]];
     success = [[TouchInjector sharedInjector] swipeFrom:CGPointMake(x1, y1)
                                                      to:CGPointMake(x2, y2)
                                                duration:duration];
     [logger log:[NSString stringWithFormat:@"[Agent] %@ Swipe result: %@",
                                            success ? @"✅" : @"❌",
                                            success ? @"SUCCESS" : @"FAILED"]];
+    [self addLog:[NSString stringWithFormat:@"%@ Swipe: %@",
+                                            success ? @"✅" : @"❌",
+                                            success ? @"OK" : @"FAIL"]];
   } else {
     errorMessage = @"Unknown action";
     [logger log:[NSString
                     stringWithFormat:@"[Agent] ❌ Unknown action: %@", action]];
+    [self addLog:[NSString stringWithFormat:@"❌ Unknown: %@", action]];
   }
 
   // Send response
@@ -130,9 +182,12 @@
   [logger log:[NSString
                   stringWithFormat:@"[Agent] 📤 Response sent: %@ (success=%d)",
                                    commandId, success]];
+  [self addLog:[NSString stringWithFormat:@"📤 Response sent: %@",
+                                          success ? @"✅" : @"❌"]];
 }
 
 - (void)startBackgroundKeepAlive {
+  [self addLog:@"[Agent] 🔊 Starting background keep-alive..."];
   NSLog(@"[Agent] 🔊 Starting background keep-alive...");
 
   // 配置音频会话
@@ -143,47 +198,33 @@
                  error:&error];
   if (error) {
     NSLog(@"[Agent] ❌ Audio session error: %@", error);
+    [self addLog:[NSString stringWithFormat:@"❌ Audio error: %@",
+                                            error.localizedDescription]];
     return;
   }
   [session setActive:YES error:&error];
 
-  // 播放静音音频
-  NSString *soundPath = [[NSBundle mainBundle] pathForResource:@"silence"
-                                                        ofType:@"mp3"];
-  if (!soundPath) {
-    // 如果没有音频文件,创建一个空的播放器
-    NSLog(@"[Agent] ⚠️ No silence.mp3 found, using alternative method");
-    return;
-  }
-
-  NSURL *soundURL = [NSURL fileURLWithPath:soundPath];
-  self.audioPlayer = [[AVAudioPlayer alloc] initWithContentsOfURL:soundURL
-                                                            error:&error];
-  if (error) {
-    NSLog(@"[Agent] ❌ Audio player error: %@", error);
-    return;
-  }
-
-  self.audioPlayer.numberOfLoops = -1; // 无限循环
-  self.audioPlayer.volume = 0.01;      // 极低音量
-  [self.audioPlayer play];
-
-  NSLog(@"[Agent] ✅ Background keep-alive started");
+  [self addLog:@"[Agent] ✅ Background keep-alive started"];
+    NSLog(@"[Agent] ✅ Background keep-alive started (no audio file needed)"];
 }
 
 - (void)applicationWillResignActive:(UIApplication *)application {
+  [self addLog:@"[Agent] ⚠️ Will resign active"];
   NSLog(@"[Agent] ⚠️ Will resign active");
 }
 
 - (void)applicationDidEnterBackground:(UIApplication *)application {
-  NSLog(@"[Agent] 📱 Entered background - Server should continue running");
+  [self addLog:@"[Agent] 📱 Entered background"];
+    NSLog(@"[Agent] 📱 Entered background - Server should continue running"];
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application {
+  [self addLog:@"[Agent] 📱 Will enter foreground"];
   NSLog(@"[Agent] 📱 Will enter foreground");
 }
 
 - (void)applicationDidBecomeActive:(UIApplication *)application {
+  [self addLog:@"[Agent] ✅ Did become active"];
   NSLog(@"[Agent] ✅ Did become active");
 }
 
