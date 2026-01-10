@@ -7,6 +7,9 @@
 @property(nonatomic, strong) UILabel *statusLabel;
 @property(nonatomic, strong) UITextView *logTextView;
 @property(nonatomic, strong) NSMutableArray<CAShapeLayer *> *tapLayers;
+@property(nonatomic, assign) BOOL isTesting;
+
+- (void)addLog:(NSString *)message;
 @end
 
 @implementation TouchTestViewController
