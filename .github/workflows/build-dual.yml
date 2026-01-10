@@ -128,27 +128,26 @@ jobs:
           cp TrollTouch.ipa release/
           
           # Create README
-          cat > release/README.txt << 'EOF'
-TrollTouch - 双 IPA 安装包
-==========================
-
-安装步骤:
-1. 使用 TrollStore 安装 TrollTouchAgent.ipa
-2. 使用 TrollStore 安装 TrollTouch.ipa
-3. 先打开 TrollTouchAgent (会在后台运行 HTTP Server)
-4. 然后打开 TrollTouch (主应用)
-
-注意:
-- TrollTouchAgent 必须保持运行才能进行触摸注入
-- 两个应用都需要通过 TrollStore 安装以获得必要权限
-- 确保设备运行 iOS 14.0 或更高版本
-
-版本: $(date +%Y%m%d-%H%M%S)
-EOF
+          cat > release/README.txt << 'EOFMARKER'
+          TrollTouch - Dual IPA Package
+          ==============================
+          
+          Installation Steps:
+          1. Install TrollTouchAgent.ipa using TrollStore
+          2. Install TrollTouch.ipa using TrollStore
+          3. Open TrollTouchAgent first (runs HTTP Server in background)
+          4. Then open TrollTouch (main app)
+          
+          Notes:
+          - TrollTouchAgent must keep running for touch injection
+          - Both apps need TrollStore installation for necessary permissions
+          - Requires iOS 14.0 or higher
+          EOFMARKER
           
           # Create zip
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
           cd release
-          zip -r ../TrollTouch-Complete-$(date +%Y%m%d-%H%M%S).zip .
+          zip -r ../TrollTouch-Complete-${TIMESTAMP}.zip .
           cd ..
           
           echo "✅ Release package created"
