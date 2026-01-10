@@ -1,11 +1,11 @@
 #import "TouchTestViewController.h"
-#import "AutomationClient.h" // Keep for future WDA testing if needed, or remove? I'll keep it but not use it.
-#import "TouchSimulator.h"
+#import "AgentClient.h"
 
 @interface TouchTestViewController ()
 @property(nonatomic, strong) UIView *canvasView;
 @property(nonatomic, strong) CAShapeLayer *pathLayer;
 @property(nonatomic, strong) UILabel *statusLabel;
+@property(nonatomic, strong) UITextView *logTextView;
 @property(nonatomic, strong) NSMutableArray<CAShapeLayer *> *tapLayers;
 @end
 
@@ -18,7 +18,9 @@
   self.tapLayers = [NSMutableArray array];
 
   // Canvas for drawing
-  self.canvasView = [[UIView alloc] initWithFrame:self.view.bounds];
+  self.canvasView = [[UIView alloc]
+      initWithFrame:CGRectMake(0, 0, self.view.bounds.size.width,
+                               self.view.bounds.size.height * 0.6)];
   self.canvasView.backgroundColor = [UIColor whiteColor];
   self.canvasView.userInteractionEnabled = YES;
   [self.view addSubview:self.canvasView];
@@ -37,16 +39,22 @@
   self.statusLabel.textAlignment = NSTextAlignmentCenter;
   self.statusLabel.font = [UIFont boldSystemFontOfSize:16];
   self.statusLabel.textColor = [UIColor blueColor];
-  self.statusLabel.text = @"Ready for WebDriverAgent Test";
+  self.statusLabel.text = @"Connecting to Agent...";
   [self.view addSubview:self.statusLabel];
+
+  // Log text view
+  CGFloat logY = self.canvasView.frame.size.height;
+  self.logTextView = [[UITextView alloc]
+      initWithFrame:CGRectMake(10, logY, self.view.bounds.size.width - 20,
+                               self.view.bounds.size.height - logY - 150)];
+  self.logTextView.backgroundColor = [UIColor colorWithWhite:0.95 alpha:1.0];
+  self.logTextView.font = [UIFont fontWithName:@"Menlo" size:10];
+  self.logTextView.editable = NO;
+  self.logTextView.text = @"";
+  [self.view addSubview:self.logTextView];
 
   // Buttons
   [self setupButtons];
-
-  // Check server status
-  // Check server status - TouchSimulator is always ready
-  self.statusLabel.text = @"✅ TouchSimulator Ready (IOHIDEvent)";
-  NSLog(@"[TouchTest] ✅ TouchSimulator is ready");
 }
 
 - (void)setupButtons {
@@ -112,36 +120,91 @@
   [self dismissViewControllerAnimated:YES completion:nil];
 }
 
+- (void)addLog:(NSString *)message {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    NSString *timestamp =
+        [NSDateFormatter localizedStringFromDate:[NSDate date]
+                                       dateStyle:NSDateFormatterNoStyle
+                                       timeStyle:NSDateFormatterMediumStyle];
+    NSString *logEntry =
+        [NSString stringWithFormat:@"[%@] %@\n", timestamp, message];
+    self.logTextView.text =
+        [self.logTextView.text stringByAppendingString:logEntry];
+
+    // Auto-scroll to bottom
+    NSRange range = NSMakeRange(self.logTextView.text.length - 1, 1);
+    [self.logTextView scrollRangeToVisible:range];
+  });
+  NSLog(@"[TouchTest] %@", message);
+}
+
 - (void)startAutoTest {
-  self.statusLabel.text = @"Testing via WebDriverAgent...";
-  NSLog(@"[TouchTest] ========== WEBDRIVERAGENT TEST STARTED ==========");
+  self.statusLabel.text = @"Testing via AgentClient...";
+  [self addLog:@"========== AGENT CLIENT TEST STARTED =========="];
+  [self addLog:@"📡 Connecting to TrollTouchAgent..."];
 
   [self clearCanvas];
 
-  // Run test in background
-  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
-                 ^{
-                   [self runAutoTest];
-                 });
+  // First check if Agent is online
+  [[AgentClient sharedClient] checkStatus:^(BOOL online, NSDictionary *info) {
+    if (online) {
+      [self addLog:[NSString stringWithFormat:@"✅ Agent is ONLINE: %@", info]];
+      [self addLog:@"🚀 Starting touch injection tests..."];
+
+      // Run test in background
+      dispatch_async(
+          dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+            [self runAutoTest];
+          });
+    } else {
+      [self addLog:@"❌ Agent is OFFLINE"];
+      [self addLog:@"⚠️ Please make sure TrollTouchAgent is running!"];
+      [self addLog:@"Steps:"];
+      [self addLog:@"1. Open TrollTouchAgent app"];
+      [self addLog:@"2. Wait for 'HTTP Server: localhost:8100' message"];
+      [self addLog:@"3. Return to this app and try again"];
+
+      dispatch_async(dispatch_get_main_queue(), ^{
+        self.statusLabel.text = @"❌ Agent Offline";
+      });
+    }
+  }];
 }
 
 - (void)runAutoTest {
-  // Test 5 random swipes via AutomationClient
-  NSLog(@"[TouchTest] --- Testing 5 Swipes via AutomationClient ---");
+  // Test 5 random swipes via AgentClient
+  [self addLog:@""];
+  [self addLog:@"--- Testing 5 Swipes via AgentClient ---"];
+
   for (int i = 0; i < 5; i++) {
     float startX = 0.2 + (arc4random() % 60) / 100.0;
     float startY = 0.2 + (arc4random() % 60) / 100.0;
     float endX = 0.2 + (arc4random() % 60) / 100.0;
     float endY = 0.2 + (arc4random() % 60) / 100.0;
 
-    NSLog(@"[TouchTest] Swipe #%d: (%.3f, %.3f) -> (%.3f, %.3f)", i + 1, startX,
-          startY, endX, endY);
+    [self addLog:[NSString stringWithFormat:
+                               @"👉 Swipe #%d: (%.3f, %.3f) → (%.3f, %.3f)",
+                               i + 1, startX, startY, endX, endY]];
 
-    // Use TouchSimulator
-    [[TouchSimulator sharedSimulator] swipeFrom:CGPointMake(startX, startY)
-                                             to:CGPointMake(endX, endY)
-                                       duration:0.3];
-    NSLog(@"[TouchTest] ✅ Swipe #%d dispatched via IOHIDEvent", i + 1);
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+    [[AgentClient sharedClient]
+         swipeFrom:CGPointMake(startX, startY)
+                to:CGPointMake(endX, endY)
+          duration:0.3
+        completion:^(BOOL success, NSError *error) {
+          if (success) {
+            [self addLog:[NSString
+                             stringWithFormat:@"✅ Swipe #%d SUCCESS", i + 1]];
+          } else {
+            [self addLog:[NSString
+                             stringWithFormat:@"❌ Swipe #%d FAILED: %@", i + 1,
+                                              error.localizedDescription]];
+          }
+          dispatch_semaphore_signal(semaphore);
+        }];
+
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     usleep(500000); // 0.5s between swipes
 
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -150,17 +213,34 @@
     });
   }
 
-  // Test 5 random taps via AutomationClient
-  NSLog(@"[TouchTest] --- Testing 5 Taps via AutomationClient ---");
+  // Test 5 random taps via AgentClient
+  [self addLog:@""];
+  [self addLog:@"--- Testing 5 Taps via AgentClient ---"];
+
   for (int i = 0; i < 5; i++) {
     float tapX = 0.2 + (arc4random() % 60) / 100.0;
     float tapY = 0.2 + (arc4random() % 60) / 100.0;
 
-    NSLog(@"[TouchTest] Tap #%d: (%.3f, %.3f)", i + 1, tapX, tapY);
+    [self addLog:[NSString stringWithFormat:@"👆 Tap #%d: (%.3f, %.3f)", i + 1,
+                                            tapX, tapY]];
 
-    // Use TouchSimulator
-    [[TouchSimulator sharedSimulator] tapAtPoint:CGPointMake(tapX, tapY)];
-    NSLog(@"[TouchTest] ✅ Tap #%d dispatched via IOHIDEvent", i + 1);
+    dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
+
+    [[AgentClient sharedClient]
+        tapAtPoint:CGPointMake(tapX, tapY)
+        completion:^(BOOL success, NSError *error) {
+          if (success) {
+            [self addLog:[NSString
+                             stringWithFormat:@"✅ Tap #%d SUCCESS", i + 1]];
+          } else {
+            [self addLog:[NSString
+                             stringWithFormat:@"❌ Tap #%d FAILED: %@", i + 1,
+                                              error.localizedDescription]];
+          }
+          dispatch_semaphore_signal(semaphore);
+        }];
+
+    dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
     usleep(300000); // 0.3s between taps
 
     dispatch_async(dispatch_get_main_queue(), ^{
