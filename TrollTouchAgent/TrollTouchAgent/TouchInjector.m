@@ -33,6 +33,7 @@ typedef void (*IOHIDEventSystemClientSetMatchingFunc)(IOHIDEventSystemClientRef,
 typedef CFArrayRef (*IOHIDEventSystemClientCopyServicesFunc)(
     IOHIDEventSystemClientRef);
 typedef uint64_t (*IOHIDServiceGetRegistryIDFunc)(void *);
+typedef CFTypeRef (*IOHIDServiceCopyPropertyFunc)(void *, CFStringRef);
 
 // GraphicsServices Types
 typedef struct GSEventRecord {
@@ -69,6 +70,7 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
   IOHIDEventSystemClientSetMatchingFunc _IOHIDEventSystemClientSetMatching;
   IOHIDEventSystemClientCopyServicesFunc _IOHIDEventSystemClientCopyServices;
   IOHIDServiceGetRegistryIDFunc _IOHIDServiceGetRegistryID;
+  IOHIDServiceCopyPropertyFunc _IOHIDServiceCopyProperty;
 
   // GraphicsServices Handles
   void *_gsHandle;
@@ -154,11 +156,23 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
           _ioKitHandle, "IOHIDEventSystemClientCopyServices");
   _IOHIDServiceGetRegistryID = (IOHIDServiceGetRegistryIDFunc)dlsym(
       _ioKitHandle, "IOHIDServiceGetRegistryID");
+  _IOHIDServiceCopyProperty = (IOHIDServiceCopyPropertyFunc)dlsym(
+      _ioKitHandle, "IOHIDServiceCopyProperty");
 
   if (_IOHIDEventSystemClientCreate) {
     _client = _IOHIDEventSystemClientCreate(kCFAllocatorDefault);
     if (_client) {
       [self findDigitizerService];
+
+      // Final Safety Check: If Discovery Failed (Still 0), Force Fallback
+      if (_digitizerServiceID == 0) {
+        _digitizerServiceID = 0x8000000817319372;
+        self.serviceStatus = @"Forced Fallback (ID was 0)";
+        self.currentMethod = @"IOHIDEvent (Fallback)";
+        NSLog(@"[TouchInjector] ⚠️ Forced fallback to generic ID: 0x%llX",
+              _digitizerServiceID);
+      }
+
     } else {
       self.serviceStatus = @"Client Create Failed";
     }
@@ -170,10 +184,6 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
 - (void)findDigitizerService {
   if (!_IOHIDEventSystemClientSetMatching ||
       !_IOHIDEventSystemClientCopyServices) {
-    // Fallback for older iOS or missing symbols
-    _digitizerServiceID = 0x8000000817319372;
-    self.serviceStatus = @"Fallback ID (No Discovery)";
-    self.currentMethod = @"IOHIDEvent (Fallback)";
     return;
   }
 
@@ -189,28 +199,40 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
   // Copy matched services
   CFArrayRef services = _IOHIDEventSystemClientCopyServices(_client);
   if (services) {
-    if (CFArrayGetCount(services) > 0) {
+    CFIndex count = CFArrayGetCount(services);
+    if (count > 0) {
       void *service = (void *)CFArrayGetValueAtIndex(services, 0);
+
+      // Try Method 1: GetRegistryID
       if (_IOHIDServiceGetRegistryID) {
         _digitizerServiceID = _IOHIDServiceGetRegistryID(service);
+      }
+
+      // Try Method 2: CopyProperty("RegistryID")
+      if (_digitizerServiceID == 0 && _IOHIDServiceCopyProperty) {
+        NSNumber *regID =
+            (__bridge_transfer NSNumber *)_IOHIDServiceCopyProperty(
+                service, CFSTR("RegistryID"));
+        if (regID) {
+          _digitizerServiceID = [regID unsignedLongLongValue];
+        }
+      }
+
+      if (_digitizerServiceID != 0) {
         self.serviceStatus = [NSString
             stringWithFormat:@"Found Service: 0x%llX", _digitizerServiceID];
         NSLog(@"[TouchInjector] ✅ Found Digitizer Service: 0x%llX",
               _digitizerServiceID);
         self.currentMethod = @"IOHIDEvent";
       } else {
-        _digitizerServiceID = 0x8000000817319372;
-        self.serviceStatus = @"Found Service (No ID Func)";
+        self.serviceStatus = @"Found Service but ID is 0";
       }
     } else {
-      _digitizerServiceID = 0x8000000817319372;
-      self.serviceStatus = @"No Matching Services (Fallback)";
-      NSLog(@"[TouchInjector] ⚠️ No matching digitizer services found");
+      self.serviceStatus = @"No Services Found";
     }
     CFRelease(services);
   } else {
-    _digitizerServiceID = 0x8000000817319372;
-    self.serviceStatus = @"CopyServices Failed (Fallback)";
+    self.serviceStatus = @"CopyServices Failed";
   }
 }
 
