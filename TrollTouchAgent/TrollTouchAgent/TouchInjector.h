@@ -6,7 +6,6 @@
 #import <CoreGraphics/CoreGraphics.h>
 #import <Foundation/Foundation.h>
 
-
 @interface TouchInjector : NSObject
 
 + (instancetype)sharedInjector;
@@ -17,7 +16,10 @@
                to:(CGPoint)end
          duration:(NSTimeInterval)duration;
 
-// 获取当前使用的方法
-- (NSString *)currentMethod;
+// Status for UI
+@property(nonatomic, readonly) BOOL iohidLoaded;
+@property(nonatomic, readonly) BOOL gsLoaded;
+@property(nonatomic, readonly) NSString *statusString;
+@property(nonatomic, readonly) NSString *currentMethod;
 
 @end
