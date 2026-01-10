@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 允许调试 -->
+	<key>com.apple.security.get-task-allow</key>
+	<true/>
+	
+	<!-- 跳过库验证 -->
+	<key>com.apple.private.skip-library-validation</key>
+	<true/>
+	
+	<!-- IOHIDEvent 触摸注入 -->
+	<key>com.apple.private.hid.client.event-dispatch</key>
+	<true/>
+	
+	<!-- 后台运行 -->
+	<key>com.apple.multitasking.systemappmonitor</key>
+	<true/>
+	
+	<!-- 网络服务器 -->
+	<key>com.apple.private.network.socket-delegate</key>
+	<true/>
+	
+	<!-- 允许查询其他应用 -->
+	<key>com.apple.private.canOpenAnything</key>
+	<true/>
+</dict>
+</plist>
