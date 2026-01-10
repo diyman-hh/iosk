@@ -10,6 +10,10 @@
 @property(nonatomic, assign) BOOL isTesting;
 
 - (void)addLog:(NSString *)message;
+- (void)clearCanvas;
+- (void)closeTest;
+- (void)toggleTest:(UIButton *)sender;
+- (void)startAutoTest;
 @end
 
 @implementation TouchTestViewController
@@ -59,8 +63,6 @@
   // Buttons
   [self setupButtons];
 }
-
-@property(nonatomic, assign) BOOL isTesting;
 
 - (void)setupButtons {
   CGFloat buttonWidth = 120;
