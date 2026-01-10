@@ -51,6 +51,7 @@ targets:
       # 关闭代码签名
       CODE_SIGNING_ALLOWED: NO
       CODE_SIGN_IDENTITY: ""
+      CODE_SIGN_ENTITLEMENTS: TrollTouch/TrollTouch.entitlements
       # 链接必要的系统库
       OTHER_LDFLAGS: 
         - "-framework"

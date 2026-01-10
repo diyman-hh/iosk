@@ -37,6 +37,12 @@
     </array>
     <key>UIFileSharingEnabled</key>
     <true/>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+        <string>tiktok</string>
+        <string>snssdk1128</string>
+        <string>snssdk1233</string>
+    </array>
     <key>LSSupportsOpeningDocumentsInPlace</key>
     <true/>
     <key>UISupportedInterfaceOrientations</key>
