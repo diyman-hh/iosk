@@ -14,6 +14,7 @@
 // IOHIDEvent Types
 typedef struct __IOHIDEvent *IOHIDEventRef;
 typedef struct __IOHIDEventSystemClient *IOHIDEventSystemClientRef;
+typedef struct __IOHIDServiceClient *IOHIDServiceClientRef;
 
 // Function Pointer Types
 typedef IOHIDEventSystemClientRef (*IOHIDEventSystemClientCreateFunc)(
@@ -32,8 +33,9 @@ typedef void (*IOHIDEventSystemClientSetMatchingFunc)(IOHIDEventSystemClientRef,
                                                       CFDictionaryRef);
 typedef CFArrayRef (*IOHIDEventSystemClientCopyServicesFunc)(
     IOHIDEventSystemClientRef);
-typedef uint64_t (*IOHIDServiceGetRegistryIDFunc)(void *);
-typedef CFTypeRef (*IOHIDServiceCopyPropertyFunc)(void *, CFStringRef);
+typedef uint64_t (*IOHIDServiceClientGetRegistryIDFunc)(IOHIDServiceClientRef);
+typedef CFTypeRef (*IOHIDServiceClientCopyPropertyFunc)(IOHIDServiceClientRef,
+                                                        CFStringRef);
 
 // GraphicsServices Types
 typedef struct GSEventRecord {
@@ -69,8 +71,8 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
   // Discovery Handles
   IOHIDEventSystemClientSetMatchingFunc _IOHIDEventSystemClientSetMatching;
   IOHIDEventSystemClientCopyServicesFunc _IOHIDEventSystemClientCopyServices;
-  IOHIDServiceGetRegistryIDFunc _IOHIDServiceGetRegistryID;
-  IOHIDServiceCopyPropertyFunc _IOHIDServiceCopyProperty;
+  IOHIDServiceClientGetRegistryIDFunc _IOHIDServiceClientGetRegistryID;
+  IOHIDServiceClientCopyPropertyFunc _IOHIDServiceClientCopyProperty;
 
   // GraphicsServices Handles
   void *_gsHandle;
@@ -154,17 +156,19 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
   _IOHIDEventSystemClientCopyServices =
       (IOHIDEventSystemClientCopyServicesFunc)dlsym(
           _ioKitHandle, "IOHIDEventSystemClientCopyServices");
-  _IOHIDServiceGetRegistryID = (IOHIDServiceGetRegistryIDFunc)dlsym(
-      _ioKitHandle, "IOHIDServiceGetRegistryID");
-  _IOHIDServiceCopyProperty = (IOHIDServiceCopyPropertyFunc)dlsym(
-      _ioKitHandle, "IOHIDServiceCopyProperty");
+
+  // Use IOHIDServiceClient* APIs
+  _IOHIDServiceClientGetRegistryID = (IOHIDServiceClientGetRegistryIDFunc)dlsym(
+      _ioKitHandle, "IOHIDServiceClientGetRegistryID");
+  _IOHIDServiceClientCopyProperty = (IOHIDServiceClientCopyPropertyFunc)dlsym(
+      _ioKitHandle, "IOHIDServiceClientCopyProperty");
 
   if (_IOHIDEventSystemClientCreate) {
     _client = _IOHIDEventSystemClientCreate(kCFAllocatorDefault);
     if (_client) {
       [self findDigitizerService];
 
-      // Final Safety Check: If Discovery Failed (Still 0), Force Fallback
+      // Final Safety Check
       if (_digitizerServiceID == 0) {
         _digitizerServiceID = 0x8000000817319372;
         self.serviceStatus = @"Forced Fallback (ID was 0)";
@@ -187,7 +191,6 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
     return;
   }
 
-  // Create matching dictionary for Digitizer (0x0D) -> TouchScreen (0x04)
   NSDictionary *matching = @{
     @"PrimaryUsagePage" : @(kHIDPage_Digitizer),
     @"PrimaryUsage" : @(kHIDUsage_Dig_TouchScreen)
@@ -196,22 +199,23 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
   _IOHIDEventSystemClientSetMatching(_client,
                                      (__bridge CFDictionaryRef)matching);
 
-  // Copy matched services
   CFArrayRef services = _IOHIDEventSystemClientCopyServices(_client);
   if (services) {
     CFIndex count = CFArrayGetCount(services);
     if (count > 0) {
-      void *service = (void *)CFArrayGetValueAtIndex(services, 0);
+      // Get the first service client
+      IOHIDServiceClientRef service =
+          (IOHIDServiceClientRef)CFArrayGetValueAtIndex(services, 0);
 
       // Try Method 1: GetRegistryID
-      if (_IOHIDServiceGetRegistryID) {
-        _digitizerServiceID = _IOHIDServiceGetRegistryID(service);
+      if (_IOHIDServiceClientGetRegistryID) {
+        _digitizerServiceID = _IOHIDServiceClientGetRegistryID(service);
       }
 
       // Try Method 2: CopyProperty("RegistryID")
-      if (_digitizerServiceID == 0 && _IOHIDServiceCopyProperty) {
+      if (_digitizerServiceID == 0 && _IOHIDServiceClientCopyProperty) {
         NSNumber *regID =
-            (__bridge_transfer NSNumber *)_IOHIDServiceCopyProperty(
+            (__bridge_transfer NSNumber *)_IOHIDServiceClientCopyProperty(
                 service, CFSTR("RegistryID"));
         if (regID) {
           _digitizerServiceID = [regID unsignedLongLongValue];
@@ -219,10 +223,21 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
       }
 
       if (_digitizerServiceID != 0) {
-        self.serviceStatus = [NSString
-            stringWithFormat:@"Found Service: 0x%llX", _digitizerServiceID];
-        NSLog(@"[TouchInjector] ✅ Found Digitizer Service: 0x%llX",
-              _digitizerServiceID);
+        // Try to get Product Name
+        NSString *productName = @"Unknown";
+        if (_IOHIDServiceClientCopyProperty) {
+          NSString *name =
+              (__bridge_transfer NSString *)_IOHIDServiceClientCopyProperty(
+                  service, CFSTR("Product"));
+          if (name)
+            productName = name;
+        }
+
+        self.serviceStatus =
+            [NSString stringWithFormat:@"Found: %@ (ID: 0x%llX)", productName,
+                                       _digitizerServiceID];
+        NSLog(@"[TouchInjector] ✅ Found Digitizer Service: 0x%llX (%@)",
+              _digitizerServiceID, productName);
         self.currentMethod = @"IOHIDEvent";
       } else {
         self.serviceStatus = @"Found Service but ID is 0";
