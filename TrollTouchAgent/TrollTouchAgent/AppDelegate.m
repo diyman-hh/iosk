@@ -5,10 +5,10 @@
 
 #import "AppDelegate.h"
 #import "AgentSelfTest.h"
+#import "FileLogger.h"
 #import "SharedCommandQueue.h"
 #import "TouchInjector.h"
 #import <AVFoundation/AVFoundation.h>
-
 
 @interface AppDelegate ()
 @property(nonatomic, strong) AVAudioPlayer *audioPlayer;
@@ -18,7 +18,9 @@
 
 - (BOOL)application:(UIApplication *)application
     didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-  NSLog(@"[Agent] 🚀 TrollTouchAgent Starting...");
+  // Initialize FileLogger first
+  FileLogger *logger = [FileLogger sharedLogger];
+  [logger log:@"[Agent] 🚀 TrollTouchAgent Starting..."];
 
   // 创建简单的 UI
   self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];

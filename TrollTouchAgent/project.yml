@@ -20,6 +20,8 @@ targets:
       - TrollTouchAgent/SharedCommandQueue.m
       - TrollTouchAgent/AgentSelfTest.h
       - TrollTouchAgent/AgentSelfTest.m
+      - TrollTouchAgent/FileLogger.h
+      - TrollTouchAgent/FileLogger.m
       - TrollTouchAgent/Info.plist
     settings:
       PRODUCT_NAME: TrollTouchAgent
