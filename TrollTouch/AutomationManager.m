@@ -474,14 +474,14 @@ void signalHandler(int signal) {
 
   float duration = 0.25f;
 
-  [self log:@"[操作] 👆 准备滑动 (WDA): (%.3f, %.3f) → (%.3f, %.3f) 时长: "
+  [self log:@"[操作] 👆 准备滑动 (TouchSimulator): (%.3f, %.3f) → (%.3f, %.3f) "
+            @"时长: "
             @"%.2fs",
             startX, startY, endX, endY, duration];
 
-  [[AutomationClient sharedClient] swipeFrom:CGPointMake(startX, startY)
-                                          to:CGPointMake(endX, endY)
-                                    duration:duration
-                                  completion:nil];
+  [[TouchSimulator sharedSimulator] swipeFrom:CGPointMake(startX, startY)
+                                           to:CGPointMake(endX, endY)
+                                     duration:duration];
 
   [self log:@"[操作] ✅ 滑动到下一个视频"];
 }
