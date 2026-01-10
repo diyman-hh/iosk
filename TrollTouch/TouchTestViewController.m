@@ -1,5 +1,7 @@
 #import "TouchTestViewController.h"
+#import "AccessibilityAutomator.h"
 #import "AgentClient.h"
+
 
 @interface TouchTestViewController ()
 @property(nonatomic, strong) UIView *canvasView;
