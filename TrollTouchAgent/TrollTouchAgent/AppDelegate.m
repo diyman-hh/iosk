@@ -30,22 +30,22 @@
   UIViewController *rootVC = [[UIViewController alloc] init];
   rootVC.view.backgroundColor = [UIColor blackColor];
 
-  // Title Label
-  UILabel *label = [[UILabel alloc]
-      initWithFrame:CGRectMake(20, 40, self.window.bounds.size.width - 40,
-                               100)];
+  // Status Label (Scrollable)
+  UITextView *statusView = [[UITextView alloc]
+      initWithFrame:CGRectMake(10, 40, self.window.bounds.size.width - 20,
+                               120)];
 
   NSString *status = [[TouchInjector sharedInjector] statusString];
-  label.text = [NSString stringWithFormat:@"TrollTouchAgent v2.0\n%@", status];
+  statusView.text = status;
 
-  label.textColor = [UIColor whiteColor];
-  label.textAlignment = NSTextAlignmentCenter;
-  label.numberOfLines = 0;
-  label.font = [UIFont fontWithName:@"Menlo-Bold" size:12];
-  [rootVC.view addSubview:label];
+  statusView.backgroundColor = [UIColor colorWithWhite:0.1 alpha:1.0];
+  statusView.textColor = [UIColor greenColor];
+  statusView.font = [UIFont fontWithName:@"Menlo" size:9];
+  statusView.editable = NO;
+  [rootVC.view addSubview:statusView];
 
   // Log TextView - 显示实时日志
-  CGFloat logY = 150;
+  CGFloat logY = 170;
   self.logTextView = [[UITextView alloc]
       initWithFrame:CGRectMake(10, logY, self.window.bounds.size.width - 20,
                                self.window.bounds.size.height - logY - 20)];
