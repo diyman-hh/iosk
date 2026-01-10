@@ -15,7 +15,40 @@
 @property(nonatomic, strong) dispatch_queue_t logQueue;
 @end
 
-// ... implementation ...
+@implementation FileLogger
+
++ (instancetype)sharedLogger {
+  static FileLogger *instance = nil;
+  static dispatch_once_t onceToken;
+  dispatch_once(&onceToken, ^{
+    instance = [[FileLogger alloc] init];
+  });
+  return instance;
+}
+
+- (instancetype)init {
+  self = [super init];
+  if (self) {
+    self.logQueue = dispatch_queue_create("com.trolltouch.filelogger",
+                                          DISPATCH_QUEUE_SERIAL);
+    [self setupLogFile];
+  }
+  return self;
+}
+
+- (void)log:(NSString *)message {
+  dispatch_async(self.logQueue, ^{
+    NSString *timestamp = [self currentTimestamp];
+    NSString *logEntry =
+        [NSString stringWithFormat:@"[%@] %@\n", timestamp, message];
+
+    // Write to file
+    [self writeToFile:logEntry];
+
+    // Also log to console
+    NSLog(@"%@", message);
+  });
+}
 
 - (void)setupLogFile {
   NSFileManager *fm = [NSFileManager defaultManager];
@@ -44,9 +77,7 @@
     NSError *error = nil;
     [fm createDirectoryAtPath:mediaLogDir
         withIntermediateDirectories:YES
-                         attributes:@{
-                           NSFilePosixPermissions : @0777
-                         }
+                         attributes:@{NSFilePosixPermissions : @0777}
                               error:&error];
     if (!error) {
       mediaSuccess = YES;
@@ -59,9 +90,7 @@
   if (![fm fileExistsAtPath:docsLogDir]) {
     [fm createDirectoryAtPath:docsLogDir
         withIntermediateDirectories:YES
-                         attributes:@{
-                           NSFilePosixPermissions : @0777
-                         }
+                         attributes:@{NSFilePosixPermissions : @0777}
                               error:nil];
   }
 
