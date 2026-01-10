@@ -137,23 +137,25 @@
 
 - (void)toggleTest:(UIButton *)sender {
   if (self.isTesting) {
-    // Stop
+    // Stop auto swipe
+    [[AccessibilityAutomator sharedAutomator] stopAutoSwipe];
     self.isTesting = NO;
-    [sender setTitle:@"Start Random" forState:UIControlStateNormal];
+    [sender setTitle:@"Start Auto Swipe" forState:UIControlStateNormal];
     sender.backgroundColor = [UIColor colorWithRed:0.2
                                              green:0.6
                                               blue:1.0
-                                             alpha:1.0]; // Blue
-    [self addLog:@"⏹️ Random Test Stopped"];
+                                             alpha:1.0];
+    [self addLog:@"⏹️ Auto swipe stopped"];
   } else {
-    // Start
+    // Start auto swipe
+    [[AccessibilityAutomator sharedAutomator] startAutoSwipe];
     self.isTesting = YES;
-    [sender setTitle:@"Stop Test" forState:UIControlStateNormal];
+    [sender setTitle:@"Stop Auto Swipe" forState:UIControlStateNormal];
     sender.backgroundColor = [UIColor colorWithRed:1.0
                                              green:0.3
                                               blue:0.3
-                                             alpha:1.0]; // Red
-    [self startAutoTest];
+                                             alpha:1.0];
+    [self addLog:@"▶️ Auto swipe started"];
   }
 }
 
