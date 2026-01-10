@@ -10,7 +10,6 @@
 #import "TouchInjector.h"
 #import <AVFoundation/AVFoundation.h>
 
-
 @interface AppDelegate ()
 @property(nonatomic, strong) AVAudioPlayer *audioPlayer;
 @property(nonatomic, strong) UITextView *logTextView;
@@ -205,7 +204,7 @@
   [session setActive:YES error:&error];
 
   [self addLog:@"[Agent] ✅ Background keep-alive started"];
-    NSLog(@"[Agent] ✅ Background keep-alive started (no audio file needed)"];
+  NSLog(@"[Agent] ✅ Background keep-alive started (no audio file needed)");
 }
 
 - (void)applicationWillResignActive:(UIApplication *)application {
@@ -215,7 +214,7 @@
 
 - (void)applicationDidEnterBackground:(UIApplication *)application {
   [self addLog:@"[Agent] 📱 Entered background"];
-    NSLog(@"[Agent] 📱 Entered background - Server should continue running"];
+  NSLog(@"[Agent] 📱 Entered background - Server should continue running");
 }
 
 - (void)applicationWillEnterForeground:(UIApplication *)application {
