@@ -37,37 +37,53 @@
 - (void)setupLogFile {
   NSFileManager *fm = [NSFileManager defaultManager];
 
-  // Use the EXACT same path as old TrollTouch
-  NSString *logDir = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
+  // Try BOTH locations - Media/Downloads AND Documents
+  NSString *mediaLogDir = @"/var/mobile/Media/Downloads/TrollTouch_Logs";
+  NSString *docsDir = [NSSearchPathForDirectoriesInDomains(
+      NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
+  NSString *docsLogDir =
+      [docsDir stringByAppendingPathComponent:@"TrollTouch_Logs"];
 
-  // Clean up if it's a file but we need a directory
-  BOOL isDir = NO;
-  if ([fm fileExistsAtPath:logDir isDirectory:&isDir] && !isDir) {
-    [fm removeItemAtPath:logDir error:nil];
-  }
-
-  // Create directory if missing with full permissions
-  if (![fm fileExistsAtPath:logDir]) {
-    NSError *error = nil;
-    [fm createDirectoryAtPath:logDir
-        withIntermediateDirectories:YES
-                         attributes:@{NSFilePosixPermissions : @0777}
-                              error:&error];
-    if (error) {
-      NSLog(@"[FileLogger] ❌ Failed to create log directory: %@", error);
-      return;
-    }
-  }
-
-  NSLog(@"[FileLogger] ✅ Using log directory: %@", logDir);
-
-  // Create log file with timestamp
+  // Create timestamp for filename
   NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
   [formatter setDateFormat:@"yyyy-MM-dd_HH-mm-ss"];
   NSString *timestamp = [formatter stringFromDate:[NSDate date]];
   NSString *filename = [NSString stringWithFormat:@"agent_%@.log", timestamp];
 
+  // Try Media/Downloads first (like old TrollTouch)
+  BOOL mediaSuccess = NO;
+  BOOL isDir = NO;
+  if ([fm fileExistsAtPath:mediaLogDir isDirectory:&isDir] && !isDir) {
+    [fm removeItemAtPath:mediaLogDir error:nil];
+  }
+
+  if (![fm fileExistsAtPath:mediaLogDir]) {
+    NSError *error = nil;
+    [fm createDirectoryAtPath:mediaLogDir
+        withIntermediateDirectories:YES
+                         attributes:@{NSFilePosixPermissions : @0777}
+                              error:&error];
+    if (!error) {
+      mediaSuccess = YES;
+    }
+  } else {
+    mediaSuccess = YES;
+  }
+
+  // Always create Documents directory as fallback
+  if (![fm fileExistsAtPath:docsLogDir]) {
+    [fm createDirectoryAtPath:docsLogDir
+        withIntermediateDirectories:YES
+                         attributes:@{NSFilePosixPermissions : @0777}
+                              error:nil];
+  }
+
+  // Use Documents as primary (guaranteed accessible in Files app)
+  NSString *logDir = docsLogDir;
   self.logFilePath = [logDir stringByAppendingPathComponent:filename];
+
+  NSLog(@"[FileLogger] ✅ Using log directory: %@", logDir);
+  NSLog(@"[FileLogger] 📝 Log file will be: %@", self.logFilePath);
 
   // Create file with full permissions
   NSDictionary *attributes = @{NSFilePosixPermissions : @0666};
@@ -75,6 +91,16 @@
                      options:NSDataWritingAtomic
                        error:nil];
   [fm setAttributes:attributes ofItemAtPath:self.logFilePath error:nil];
+
+  // Also try to create in Media if it worked
+  if (mediaSuccess) {
+    NSString *mediaLogPath =
+        [mediaLogDir stringByAppendingPathComponent:filename];
+    [[NSData data] writeToFile:mediaLogPath
+                       options:NSDataWritingAtomic
+                         error:nil];
+    NSLog(@"[FileLogger] 📝 Also created log at: %@", mediaLogPath);
+  }
 
   // Open file handle
   self.fileHandle = [NSFileHandle fileHandleForWritingAtPath:self.logFilePath];
