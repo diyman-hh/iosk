@@ -57,6 +57,12 @@ typedef void (*GSSendSysEventFunc)(const GSEventRecord *);
 #define kHIDPage_Digitizer 0x0D
 #define kHIDUsage_Dig_TouchScreen 0x04
 
+// Digitizer Event Masks
+#define kIOHIDDigitizerEventRange (1 << 0)
+#define kIOHIDDigitizerEventTouch (1 << 1)
+#define kIOHIDDigitizerEventPosition (1 << 2)
+#define kIOHIDDigitizerEventIdentity (1 << 5)
+
 @interface TouchInjector () {
   // IOHIDEvent Handles
   void *_ioKitHandle;
