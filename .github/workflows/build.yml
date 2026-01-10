@@ -1,4 +1,4 @@
-name: Build TrollTouch IPA (Legacy - Single IPA)
+name: Build TrollTouch IPA
 
 on:
   # push:
