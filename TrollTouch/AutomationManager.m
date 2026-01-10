@@ -371,15 +371,21 @@ void signalHandler(int signal) {
 - (void)launchTikTok {
   [self log:@"[*] 🚀 使用WebDriverAgent方式启动 TikTok..."];
 
-  [[AutomationClient sharedClient]
-       launchApp:TIKTOK_GLOBAL
-      completion:^(BOOL success, NSError *error) {
-        if (success) {
-          [self log:@"[*] ✅ TikTok启动成功"];
-        } else {
-          [self log:@"[*] ❌ TikTok启动失败: %@", error.localizedDescription];
-        }
-      }];
+  // Use URL Scheme for TikTok
+  NSURL *tiktokURL = [NSURL URLWithString:@"snssdk1128://"];
+  if ([[UIApplication sharedApplication] canOpenURL:tiktokURL]) {
+    [[UIApplication sharedApplication] openURL:tiktokURL
+                                       options:@{}
+                             completionHandler:^(BOOL success) {
+                               if (success) {
+                                 [self log:@"[*] ✅ TikTok启动成功 (Schema)"];
+                               } else {
+                                 [self log:@"[*] ❌ TikTok启动失败"];
+                               }
+                             }];
+  } else {
+    [self log:@"[*] ⚠️ 未找到 TikTok (snssdk1128://)"];
+  }
   [NSThread sleepForTimeInterval:5.0];
   return;
 

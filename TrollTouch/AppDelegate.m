@@ -4,8 +4,10 @@
 //
 
 #import "AppDelegate.h"
+#import "AutomationManager.h"
 #import "BundleLoader.h"
 #import "RootViewController.h"
+
 
 // Helper to write startup logs to file
 static void logStartup(NSString *message) {
