@@ -32,12 +32,16 @@
 
   // Title Label
   UILabel *label = [[UILabel alloc]
-      initWithFrame:CGRectMake(20, 60, self.window.bounds.size.width - 40, 80)];
-  label.text = @"TrollTouchAgent\n运行中...\nApp Groups IPC Ready";
+      initWithFrame:CGRectMake(20, 40, self.window.bounds.size.width - 40,
+                               100)];
+
+  NSString *status = [[TouchInjector sharedInjector] statusString];
+  label.text = [NSString stringWithFormat:@"TrollTouchAgent v2.0\n%@", status];
+
   label.textColor = [UIColor whiteColor];
   label.textAlignment = NSTextAlignmentCenter;
   label.numberOfLines = 0;
-  label.font = [UIFont boldSystemFontOfSize:16];
+  label.font = [UIFont fontWithName:@"Menlo-Bold" size:12];
   [rootVC.view addSubview:label];
 
   // Log TextView - 显示实时日志
