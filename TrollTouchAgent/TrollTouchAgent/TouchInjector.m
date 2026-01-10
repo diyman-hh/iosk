@@ -373,13 +373,13 @@ typedef void (*GSSendSysEventFunc)(const void *);
   // Simplified event creation - use minimal parameters
   IOHIDEventRef event = _IOHIDEventCreateDigitizerEvent(
       kCFAllocatorDefault, timestamp,
-      kIOHIDDigitizerTransducerTypeHand, // Use Hand instead of Finger
-      1,                                 // index
-      1,                                 // identity
-      0x01 | 0x02 | 0x04,                // eventMask: Range | Touch | Position
-      0,                                 // buttonMask
-      x, y,                              // x, y
-      0.0,                               // z
+      3, // Use Hand instead of Finger (kIOHIDDigitizerTransducerTypeHand)
+      1, // index
+      1, // identity
+      0x01 | 0x02 | 0x04, // eventMask: Range | Touch | Position
+      0,                  // buttonMask
+      x, y,               // x, y
+      0.0,                // z
       1.0, // tipPressure (was 0.0, now 1.0 to indicate actual touch)
       0.0, // barrelPressure
       (type != 3) ? 1 : 0, // range
