@@ -35,55 +35,7 @@
 }
 
 - (void)setupLogFile {
-  // Create log directory
-  NSString *downloadsPath = @"/var/mobile/Downloads";
-  NSString *logDir =
-      [downloadsPath stringByAppendingPathComponent:@"TrollTouch_Logs"];
-
-  NSFileManager *fm = [NSFileManager defaultManager];
-  NSError *error = nil;
-
-  // Create directory if it doesn't exist
-  if (![fm fileExistsAtPath:logDir]) {
-    [fm createDirectoryAtPath:logDir
-        withIntermediateDirectories:YES
-                         attributes:nil
-                              error:&error];
-    if (error) {
-      NSLog(@"[FileLogger] ❌ Failed to create log directory: %@", error);
-      // Fallback to Documents
-      logDir = [NSSearchPathForDirectoriesInDomains(
-          NSDocumentDirectory, NSUserDomainMask, YES) firstObject];
-      logDir = [logDir stringByAppendingPathComponent:@"TrollTouch_Logs"];
-      [fm createDirectoryAtPath:logDir
-          withIntermediateDirectories:YES
-                           attributes:nil
-                                error:nil];
-    }
-  }
-
-  // Create log file with timestamp
-  NSDateFormatter *formatter = [[NSDateFormatter alloc] init];
-  [formatter setDateFormat:@"yyyy-MM-dd_HH-mm-ss"];
-  NSString *timestamp = [formatter stringFromDate:[NSDate date]];
-  NSString *filename = [NSString stringWithFormat:@"agent_%@.log", timestamp];
-
-  self.logFilePath = [logDir stringByAppendingPathComponent:filename];
-
-  // Create file
-  [fm createFileAtPath:self.logFilePath contents:nil attributes:nil];
-
-  // Open file handle
-  self.fileHandle = [NSFileHandle fileHandleForWritingAtPath:self.logFilePath];
-
-  NSLog(@"[FileLogger] 📝 Log file created at: %@", self.logFilePath);
-
-  // Write header
-  NSString *header =
-      [NSString stringWithFormat:@"TrollTouchAgent Log\nStarted: %@\n%@\n\n",
-                                 [NSDate date],
-                                 [@"=" stringByPaddingToLength:50
-                                                    withString:@"="
+withString:@"="
                                                startingAtIndex:0]];
   [self writeToFile:header];
 }

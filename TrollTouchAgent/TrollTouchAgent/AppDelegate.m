@@ -61,20 +61,28 @@
 }
 
 - (void)startCommandListener {
-  NSLog(@"[Agent] 👂 Starting App Groups command listener...");
+  FileLogger *logger = [FileLogger sharedLogger];
+  [logger log:@"[Agent] 👂 Starting App Groups command listener..."];
 
-  [[SharedCommandQueue sharedQueue]
-      startListeningWithHandler:^(NSDictionary *command) {
-        NSLog(@"[Agent] 📥 Received command: %@", command);
-        [self handleCommand:command];
-      }];
+  [[SharedCommandQueue sharedQueue] startListeningWithHandler:^(
+                                        NSDictionary *command) {
+    [logger log:[NSString stringWithFormat:@"[Agent] 📥 Received command: %@",
+                                           command]];
+    [self handleCommand:command];
+  }];
 
-  NSLog(@"[Agent] ✅ Command listener started");
+  [logger log:@"[Agent] ✅ Command listener started"];
 }
 
 - (void)handleCommand:(NSDictionary *)command {
+  FileLogger *logger = [FileLogger sharedLogger];
+
   NSString *action = command[@"action"];
   NSString *commandId = command[@"commandId"];
+
+  [logger log:[NSString
+                  stringWithFormat:@"[Agent] 📥 Handling command: %@ (ID: %@)",
+                                   action, commandId]];
 
   BOOL success = NO;
   NSString *errorMessage = nil;
@@ -82,21 +90,33 @@
   if ([action isEqualToString:@"tap"]) {
     CGFloat x = [command[@"x"] floatValue];
     CGFloat y = [command[@"y"] floatValue];
-    NSLog(@"[Agent] 👆 Executing tap at (%.3f, %.3f)", x, y);
+    [logger
+        log:[NSString
+                stringWithFormat:@"[Agent] 👆 Executing tap at (%.3f, %.3f)", x,
+                                 y]];
     success = [[TouchInjector sharedInjector] tapAtPoint:CGPointMake(x, y)];
+    [logger log:[NSString stringWithFormat:@"[Agent] %@ Tap result: %@",
+                                           success ? @"✅" : @"❌",
+                                           success ? @"SUCCESS" : @"FAILED"]];
   } else if ([action isEqualToString:@"swipe"]) {
     CGFloat x1 = [command[@"x1"] floatValue];
     CGFloat y1 = [command[@"y1"] floatValue];
     CGFloat x2 = [command[@"x2"] floatValue];
     CGFloat y2 = [command[@"y2"] floatValue];
     CGFloat duration = [command[@"duration"] floatValue];
-    NSLog(@"[Agent] 👉 Executing swipe from (%.3f, %.3f) to (%.3f, %.3f)", x1,
-          y1, x2, y2);
+    [logger log:[NSString stringWithFormat:@"[Agent] 👉 Executing swipe from "
+                                           @"(%.3f, %.3f) to (%.3f, %.3f)",
+                                           x1, y1, x2, y2]];
     success = [[TouchInjector sharedInjector] swipeFrom:CGPointMake(x1, y1)
                                                      to:CGPointMake(x2, y2)
                                                duration:duration];
+    [logger log:[NSString stringWithFormat:@"[Agent] %@ Swipe result: %@",
+                                           success ? @"✅" : @"❌",
+                                           success ? @"SUCCESS" : @"FAILED"]];
   } else {
     errorMessage = @"Unknown action";
+    [logger log:[NSString
+                    stringWithFormat:@"[Agent] ❌ Unknown action: %@", action]];
   }
 
   // Send response
@@ -107,7 +127,9 @@
   };
 
   [[SharedCommandQueue sharedQueue] sendResponse:response];
-  NSLog(@"[Agent] %@ Command executed: %@", success ? @"✅" : @"❌", action);
+  [logger log:[NSString
+                  stringWithFormat:@"[Agent] 📤 Response sent: %@ (success=%d)",
+                                   commandId, success]];
 }
 
 - (void)startBackgroundKeepAlive {
