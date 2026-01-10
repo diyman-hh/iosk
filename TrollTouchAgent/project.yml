@@ -16,6 +16,8 @@ targets:
       - TrollTouchAgent/AgentServer.m
       - TrollTouchAgent/TouchInjector.h
       - TrollTouchAgent/TouchInjector.m
+      - TrollTouchAgent/SharedCommandQueue.h
+      - TrollTouchAgent/SharedCommandQueue.m
       - TrollTouchAgent/Info.plist
     settings:
       PRODUCT_NAME: TrollTouchAgent

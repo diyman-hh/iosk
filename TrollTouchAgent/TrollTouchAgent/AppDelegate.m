@@ -4,7 +4,8 @@
 //
 
 #import "AppDelegate.h"
-#import "AgentServer.h"
+#import "SharedCommandQueue.h"
+#import "TouchInjector.h"
 #import <AVFoundation/AVFoundation.h>
 
 @interface AppDelegate ()
@@ -27,7 +28,7 @@
   UILabel *label = [[UILabel alloc]
       initWithFrame:CGRectMake(20, 100, self.window.bounds.size.width - 40,
                                200)];
-  label.text = @"TrollTouchAgent\n\n运行中...\n\nHTTP Server: localhost:8100";
+  label.text = @"TrollTouchAgent\n\n运行中...\n\nApp Groups IPC Ready";
   label.textColor = [UIColor whiteColor];
   label.textAlignment = NSTextAlignmentCenter;
   label.numberOfLines = 0;
@@ -40,12 +41,62 @@
   // 启动后台保活
   [self startBackgroundKeepAlive];
 
-  // 启动 HTTP Server
-  [[AgentServer sharedServer] startServerOnPort:8100];
+  // 启动 App Groups 监听
+  [self startCommandListener];
 
   NSLog(@"[Agent] ✅ Agent initialization complete");
 
   return YES;
+}
+
+- (void)startCommandListener {
+  NSLog(@"[Agent] 👂 Starting App Groups command listener...");
+
+  [[SharedCommandQueue sharedQueue]
+      startListeningWithHandler:^(NSDictionary *command) {
+        NSLog(@"[Agent] 📥 Received command: %@", command);
+        [self handleCommand:command];
+      }];
+
+  NSLog(@"[Agent] ✅ Command listener started");
+}
+
+- (void)handleCommand:(NSDictionary *)command {
+  NSString *action = command[@"action"];
+  NSString *commandId = command[@"commandId"];
+
+  BOOL success = NO;
+  NSString *errorMessage = nil;
+
+  if ([action isEqualToString:@"tap"]) {
+    CGFloat x = [command[@"x"] floatValue];
+    CGFloat y = [command[@"y"] floatValue];
+    NSLog(@"[Agent] 👆 Executing tap at (%.3f, %.3f)", x, y);
+    success = [[TouchInjector sharedInjector] tapAtPoint:CGPointMake(x, y)];
+  } else if ([action isEqualToString:@"swipe"]) {
+    CGFloat x1 = [command[@"x1"] floatValue];
+    CGFloat y1 = [command[@"y1"] floatValue];
+    CGFloat x2 = [command[@"x2"] floatValue];
+    CGFloat y2 = [command[@"y2"] floatValue];
+    CGFloat duration = [command[@"duration"] floatValue];
+    NSLog(@"[Agent] 👉 Executing swipe from (%.3f, %.3f) to (%.3f, %.3f)", x1,
+          y1, x2, y2);
+    success = [[TouchInjector sharedInjector] swipeFrom:CGPointMake(x1, y1)
+                                                     to:CGPointMake(x2, y2)
+                                               duration:duration];
+  } else {
+    errorMessage = @"Unknown action";
+  }
+
+  // Send response
+  NSDictionary *response = @{
+    @"commandId" : commandId,
+    @"success" : @(success),
+    @"error" : errorMessage ?: @""
+  };
+
+  [[SharedCommandQueue sharedQueue] sendResponse:response];
+  NSLog(@"[Agent] %@ Command executed: %@", success ? @"✅" : @"❌", action);
 }
 
 - (void)startBackgroundKeepAlive {
