@@ -10,29 +10,12 @@
 @interface FileLogger ()
 @property(nonatomic, strong) NSString *logFilePath;
 @property(nonatomic, strong) NSFileHandle *fileHandle;
+@property(nonatomic, strong)
+    NSFileHandle *mediaFileHandle; // Handle for Media/Downloads
 @property(nonatomic, strong) dispatch_queue_t logQueue;
 @end
 
-@implementation FileLogger
-
-+ (instancetype)sharedLogger {
-  static FileLogger *instance = nil;
-  static dispatch_once_t onceToken;
-  dispatch_once(&onceToken, ^{
-    instance = [[FileLogger alloc] init];
-  });
-  return instance;
-}
-
-- (instancetype)init {
-  self = [super init];
-  if (self) {
-    self.logQueue = dispatch_queue_create("com.trolltouch.filelogger",
-                                          DISPATCH_QUEUE_SERIAL);
-    [self setupLogFile];
-  }
-  return self;
-}
+// ... implementation ...
 
 - (void)setupLogFile {
   NSFileManager *fm = [NSFileManager defaultManager];
@@ -61,7 +44,9 @@
     NSError *error = nil;
     [fm createDirectoryAtPath:mediaLogDir
         withIntermediateDirectories:YES
-                         attributes:@{NSFilePosixPermissions : @0777}
+                         attributes:@{
+                           NSFilePosixPermissions : @0777
+                         }
                               error:&error];
     if (!error) {
       mediaSuccess = YES;
@@ -74,43 +59,40 @@
   if (![fm fileExistsAtPath:docsLogDir]) {
     [fm createDirectoryAtPath:docsLogDir
         withIntermediateDirectories:YES
-                         attributes:@{NSFilePosixPermissions : @0777}
+                         attributes:@{
+                           NSFilePosixPermissions : @0777
+                         }
                               error:nil];
   }
 
-  // Use Documents as primary (guaranteed accessible in Files app)
+  // 1. Setup Documents Logger (Primary)
   NSString *logDir = docsLogDir;
   self.logFilePath = [logDir stringByAppendingPathComponent:filename];
 
-  NSLog(@"[FileLogger] ✅ Using log directory: %@", logDir);
-  NSLog(@"[FileLogger] 📝 Log file will be: %@", self.logFilePath);
-
-  // Create file with full permissions
   NSDictionary *attributes = @{NSFilePosixPermissions : @0666};
   [[NSData data] writeToFile:self.logFilePath
                      options:NSDataWritingAtomic
                        error:nil];
   [fm setAttributes:attributes ofItemAtPath:self.logFilePath error:nil];
 
-  // Also try to create in Media if it worked
+  self.fileHandle = [NSFileHandle fileHandleForWritingAtPath:self.logFilePath];
+  NSLog(@"[FileLogger] 📝 Primary Log: %@", self.logFilePath);
+
+  // 2. Setup Media/Downloads Logger (Secondary - for i4Tools visibility)
   if (mediaSuccess) {
     NSString *mediaLogPath =
         [mediaLogDir stringByAppendingPathComponent:filename];
     [[NSData data] writeToFile:mediaLogPath
                        options:NSDataWritingAtomic
                          error:nil];
-    NSLog(@"[FileLogger] 📝 Also created log at: %@", mediaLogPath);
-  }
+    [fm setAttributes:attributes ofItemAtPath:mediaLogPath error:nil];
 
-  // Open file handle
-  self.fileHandle = [NSFileHandle fileHandleForWritingAtPath:self.logFilePath];
-  if (!self.fileHandle) {
-    NSLog(@"[FileLogger] ❌ Failed to open file handle for: %@",
-          self.logFilePath);
-    return;
+    self.mediaFileHandle =
+        [NSFileHandle fileHandleForWritingAtPath:mediaLogPath];
+    if (self.mediaFileHandle) {
+      NSLog(@"[FileLogger] 📝 Secondary Log (Public): %@", mediaLogPath);
+    }
   }
-
-  NSLog(@"[FileLogger] 📝 Log file created at: %@", self.logFilePath);
 
   // Write header
   NSString *header = [NSString
@@ -121,28 +103,27 @@
   [self writeToFile:header];
 }
 
-- (void)log:(NSString *)message {
-  dispatch_async(self.logQueue, ^{
-    NSString *timestamp = [self currentTimestamp];
-    NSString *logEntry =
-        [NSString stringWithFormat:@"[%@] %@\n", timestamp, message];
-
-    // Write to file
-    [self writeToFile:logEntry];
-
-    // Also log to console
-    NSLog(@"%@", message);
-  });
-}
-
 - (void)writeToFile:(NSString *)text {
+  NSData *data = [text dataUsingEncoding:NSUTF8StringEncoding];
+
+  // Write to Primary (Documents)
   if (self.fileHandle) {
-    NSData *data = [text dataUsingEncoding:NSUTF8StringEncoding];
     @try {
       [self.fileHandle writeData:data];
-      [self.fileHandle synchronizeFile];
+      // Only sync strictly necessary or periodically to save I/O
+      // [self.fileHandle synchronizeFile];
     } @catch (NSException *exception) {
-      NSLog(@"[FileLogger] ❌ Failed to write to log: %@", exception);
+      NSLog(@"[FileLogger] ❌ Failed to write to Doc log: %@", exception);
+    }
+  }
+
+  // Write to Secondary (Media/Downloads)
+  if (self.mediaFileHandle) {
+    @try {
+      [self.mediaFileHandle writeData:data];
+      // [self.mediaFileHandle synchronizeFile];
+    } @catch (NSException *exception) {
+      NSLog(@"[FileLogger] ❌ Failed to write to Media log: %@", exception);
     }
   }
 }
