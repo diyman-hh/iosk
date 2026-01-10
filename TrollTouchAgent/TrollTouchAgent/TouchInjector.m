@@ -39,12 +39,6 @@ typedef void (*GSSendSysEventFunc)(const void *);
 #define kHIDPage_Digitizer 0x0D
 #define kHIDUsage_Dig_TouchScreen 0x04
 
-// Event Masks
-#define kIOHIDDigitizerEventRange (1 << 0)
-#define kIOHIDDigitizerEventTouch (1 << 1)
-#define kIOHIDDigitizerEventPosition (1 << 2)
-#define kIOHIDDigitizerEventIdentity (1 << 5)
-
 @interface TouchInjector () {
   void *_ioKitHandle;
   IOHIDEventSystemClientRef _client;
@@ -364,40 +358,45 @@ typedef void (*GSSendSysEventFunc)(const void *);
 
 - (void)sendIOHIDEventAtPoint:(CGPoint)point type:(int)type {
   uint64_t timestamp = mach_absolute_time();
-  Boolean isRange = (type != 3);
-  Boolean isTouch = (type != 3);
-
-  uint32_t eventMask = kIOHIDDigitizerEventRange | kIOHIDDigitizerEventTouch |
-                       kIOHIDDigitizerEventPosition |
-                       kIOHIDDigitizerEventIdentity;
 
   CGRect screenBounds = [[UIScreen mainScreen] bounds];
-  CGFloat x = point.x * screenBounds.size.width;
-  CGFloat y = point.y * screenBounds.size.height;
+  CGFloat scale = [[UIScreen mainScreen] scale];
 
-  uint32_t handId = 2;
+  // Convert normalized (0-1) to actual pixels
+  CGFloat x = point.x * screenBounds.size.width * scale;
+  CGFloat y = point.y * screenBounds.size.height * scale;
 
-  IOHIDEventRef event =
-      _IOHIDEventCreateDigitizerEvent(kCFAllocatorDefault, timestamp,
-                                      2,      // Finger
-                                      0,      // index
-                                      handId, // identity
-                                      eventMask,
-                                      0, // buttonMask
-                                      x, y, 0.0, 0.0, 0.0, isRange, isTouch, 0);
+  NSLog(@"[TouchInjector] 📍 Event type=%d at normalized(%.3f,%.3f) -> "
+        @"pixel(%.1f,%.1f)",
+        type, point.x, point.y, x, y);
+
+  // Simplified event creation - use minimal parameters
+  IOHIDEventRef event = _IOHIDEventCreateDigitizerEvent(
+      kCFAllocatorDefault, timestamp,
+      kIOHIDDigitizerTransducerTypeHand, // Use Hand instead of Finger
+      1,                                 // index
+      1,                                 // identity
+      0x01 | 0x02 | 0x04,                // eventMask: Range | Touch | Position
+      0,                                 // buttonMask
+      x, y,                              // x, y
+      0.0,                               // z
+      1.0, // tipPressure (was 0.0, now 1.0 to indicate actual touch)
+      0.0, // barrelPressure
+      (type != 3) ? 1 : 0, // range
+      (type != 3) ? 1 : 0, // touch
+      0                    // options
+  );
 
   if (event) {
-    _IOHIDEventSetSenderID(event, _digitizerServiceID);
+    // Don't set SenderID - let system determine it
+    // _IOHIDEventSetSenderID(event, _digitizerServiceID);
 
-    if (_IOHIDEventSetIntegerValue) {
-      _IOHIDEventSetIntegerValue(event, 0x4, 0);
-      _IOHIDEventSetIntegerValue(event, 0x3, handId);
-      _IOHIDEventSetIntegerValue(event, 0xb, isTouch ? 1 : 0);
-      _IOHIDEventSetIntegerValue(event, 0xa, isRange ? 1 : 0);
-    }
-
+    NSLog(@"[TouchInjector] 📤 Dispatching event...");
     _IOHIDEventSystemClientDispatchEvent(_client, event);
     CFRelease(event);
+    NSLog(@"[TouchInjector] ✅ Event dispatched");
+  } else {
+    NSLog(@"[TouchInjector] ❌ Failed to create event");
   }
 }
 
